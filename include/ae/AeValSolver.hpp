@@ -7,11 +7,12 @@
 
 using namespace std;
 using namespace boost;
+
 namespace ufo
 {
 
   /** engine to solve validity of \forall-\exists formulas and synthesize Skolem relation */
-
+  Expr mixQE(Expr s, Expr constVar, ExprMap &substsMap, ZSolver<EZ3>::Model &m);
   class AeValSolver {
   private:
 
@@ -155,7 +156,7 @@ namespace ufo
      */
     void getMBPandSkolem(ZSolver<EZ3>::Model &m)
     {
-      Expr pr = t;
+      Expr pr = t, tempPr = t;
       ExprMap substsMap;
       ExprMap modelMap;
       for (auto & exp : v)
@@ -163,7 +164,8 @@ namespace ufo
         ExprMap map;
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, false);
-        pr = z3_qe_model_project_skolem (z3, m, exp, conjoin(lits, efac), map);
+        tempPr = z3_qe_model_project_skolem (z3, m, exp, conjoin(lits, efac), map);
+        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, substsMap, m));
         if (m.eval(exp) != exp) modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
         if (debug >= 2)
@@ -1267,5 +1269,7 @@ namespace ufo
     }
   }
 }
+
+#include "ae/MBPUtils.hpp"
 
 #endif

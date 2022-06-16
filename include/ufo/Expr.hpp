@@ -2406,6 +2406,16 @@ namespace expr
       
     namespace bind
     {
+      /// returns true if an expression is a number (variable or constant)
+      class IsNumber : public std::unary_function<Expr,bool>
+      {
+      public:
+        bool operator () (Expr e)
+        {
+          return (isOpX<MPZ>(e) || isOpX<MPQ>(e));
+        }
+      };
+
       /// returns true if an expression is int constant
       class IsHardIntConst : public std::unary_function<Expr,bool>
       {

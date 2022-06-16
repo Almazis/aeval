@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tools/aeval/aeval",
-            "args": ["--skol", "/home/almazis/git/aeval/bench/max.smt2", "--debug", "5"],
+            "args": ["--skol", "/home/almazis/git/aeval/bench/max.smt2"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],
