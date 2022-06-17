@@ -212,7 +212,7 @@ namespace ufo
     return conjoin(comm, efac);
   }
 
-  Expr projectVar(Expr fla, Expr var)
+  static Expr projectVar(Expr fla, Expr var)
   {
     ExprSet cnjs;
     getConj(fla, cnjs);
@@ -1797,7 +1797,7 @@ namespace ufo
     return weakenForVars(fla, qVars);
   }
 
-  void getExtraVars(Expr fla, ExprVector& vars, ExprSet& allVars)
+  static void getExtraVars(Expr fla, ExprVector& vars, ExprSet& allVars)
   {
     filter (fla, bind::IsConst (), inserter (allVars, allVars.begin()));
     minusSets(allVars, vars);
@@ -1806,7 +1806,7 @@ namespace ufo
     for (auto & q : qv) minusSets(allVars, q.second);
   }
 
-  bool hasOnlyVars(Expr fla, ExprVector& vars)
+  static bool hasOnlyVars(Expr fla, ExprVector& vars)
   {
     ExprSet allVars;
     getExtraVars(fla, vars, allVars);
@@ -2068,7 +2068,7 @@ namespace ufo
     return c.size();
   }
 
-  Expr projectITE(Expr ite, Expr var)
+  static Expr projectITE(Expr ite, Expr var)
   {
     if (isOpX<ITE>(ite))
     {
@@ -3772,7 +3772,7 @@ namespace ufo
     return isOpX<EQ>(exp);
   }
 
-  Expr processNestedStores (Expr exp, ExprSet& cnjs)
+  static Expr processNestedStores (Expr exp, ExprSet& cnjs)
   {
     // TODO: double check if cells are overwritten
     Expr arrVar = exp->left();
@@ -4192,7 +4192,7 @@ namespace ufo
     return conjoin(cnjs, exp->getFactory());
   }
 
-  bool isNonlinear(Expr e) {
+  static bool isNonlinear(Expr e) {
     int arity = e->arity();
     if (isOpX<MOD>(e) || isOpX<DIV>(e) || isOpX<IDIV>(e)) {
       ExprVector av;
@@ -4542,14 +4542,14 @@ namespace ufo
     if (toRepeat) simplifyPropagate(cnj);
   }
 
-  bool isBoolConstOrNegation(Expr b)
+  static bool isBoolConstOrNegation(Expr b)
   {
     if (isBoolConst(b)) return true;
     if (isOpX<NEG>(b)) return isBoolConstOrNegation(b->left());
     return false;
   }
 
-  void getLiterals (Expr exp, ExprSet& lits, bool splitEqs = true)
+  static void getLiterals (Expr exp, ExprSet& lits, bool splitEqs = true)
   {
     ExprFactory& efac = exp->getFactory();
     Expr el = exp->left();

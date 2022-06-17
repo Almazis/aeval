@@ -2340,12 +2340,12 @@ namespace expr
       }
       inline Expr sortOf (Expr v) {return typeOf (v);}
 
-      Expr mkMPZ(boost::multiprecision::cpp_int a, ExprFactory& efac)
+      static Expr mkMPZ(boost::multiprecision::cpp_int a, ExprFactory& efac)
       {
         return mkTerm (mpz_class (boost::lexical_cast<std::string>(a)), efac);
       }
 
-      Expr mkMPZ(int a, ExprFactory& efac)
+      static Expr mkMPZ(int a, ExprFactory& efac)
       {
         return mkTerm (mpz_class (a), efac);
       }
