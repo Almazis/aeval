@@ -1657,10 +1657,12 @@ namespace ufo
   }
 
   // simplification based on boolean replacements
-  template<typename Range> static void constantPropagation(Range& hardVars, ExprSet& cnjs, bool doArithm = true)
+  template<typename Range> static void constantPropagation(Range& hardVars, ExprSet& cnjs, ExprSet& elimSkol, bool doArithm = true)
   {
     ExprMap repls;
     constantPropagationRec(hardVars, cnjs, repls, doArithm);
+    for (auto pair : repls)
+      elimSkol.insert(mk<EQ>(pair.first, pair.second));
   }
 
   // simplification based on equivalence classes
@@ -2862,7 +2864,7 @@ namespace ufo
   }
 
   // rewrite just equalities
-  template<typename Range> static Expr simpleQE(Expr exp, Range& quantified)
+  template<typename Range> static Expr simpleQE(Expr exp, ExprSet& elimSkol, Range& quantified)
   {
     ExprFactory& efac = exp->getFactory();
     ExprSet cnjsSet, dsjsSet;
@@ -2870,10 +2872,9 @@ namespace ufo
     if (dsjsSet.size() > 1)
     {
       ExprSet newDsjs;
-      for (auto & d : dsjsSet) newDsjs.insert(simpleQE(d, quantified));
+      for (auto & d : dsjsSet) newDsjs.insert(simpleQE(d, elimSkol, quantified));
       return disjoin(newDsjs, efac);
     }
-
     getConj(exp, cnjsSet);
     ExprVector cnjs;
     ineqMerger(cnjsSet, true);
@@ -2881,7 +2882,7 @@ namespace ufo
     for (auto & var : quantified)
     {
       ExprSet eqs;
-      ExprSet stores;
+      Expr store; // todo: extend to ExprSet
 
       for (unsigned it = 0; it < cnjs.size(); )
       {
@@ -2909,6 +2910,7 @@ namespace ufo
         if (var == normalized->left())
         {
           eqs.insert(normalized->right());
+          elimSkol.insert(*(cnjs.begin()+it));
           cnjs.erase (cnjs.begin()+it);
           continue;
         }
@@ -2917,20 +2919,14 @@ namespace ufo
           cnjs.push_back(mk<EQ>(mk<MOD>(normalized->right(), normalized->left()->left()),
                              mkMPZ (0, efac)));
         }
-        else if (isOpX<STORE>(normalized->right()) && var == normalized->right()->left() &&
-                 emptyIntersect(normalized->left(), quantified))
-        {
+        else { it++; continue;}
+
+        if (store == NULL && containsOp<STORE>(normalized) && isOpX<EQ>(normalized) &&
+            emptyIntersect(normalized->left(), quantified) &&
+            isOpX<STORE>(normalized->right()) && var == normalized->right()->left()) {
           // one level of storing (to be extended)
-          stores.insert(normalized);
+          store = normalized;
         }
-        else if (isOpX<STORE>(normalized->left()) && var == normalized->left()->left() &&
-                 emptyIntersect(normalized->right(), quantified))
-        {
-          normalized = mk<EQ>(normalized->right(), normalized->left());
-          stores.insert(normalized);
-        }
-        else
-          { it++; continue;}
 
 //        errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
 //               << *normalized << "     [[  " << *cnj << "  ]]\n";
@@ -2939,21 +2935,10 @@ namespace ufo
         it++;
       }
 
-      if (stores.size() == 1)
-      {
-        Expr store = *stores.begin();
+      if (store != NULL) {
         // assume "store" = (A = store(var, x, y))
-        vector<int> toErase;
-        bool safeToErase = true;
-        for (unsigned it = 0; it < cnjs.size(); it++)
-        {
-          if (emptyIntersect(var, cnjs[it])) continue;
-          if (cnjs[it] == store) toErase.push_back(it);
-          else safeToErase = false;
-          if (!safeToErase) break;
-
-          // GF: to revisit; might be broken
-          /* ExprVector se;
+        for (unsigned it = 0; it < cnjs.size(); it++) {
+          ExprVector se;
           filter (cnjs[it], IsSelect (), inserter(se, se.begin()));
           for (auto s : se) {
             if (contains(store, s)) continue;
@@ -2962,12 +2947,9 @@ namespace ufo
               cnjs[it] = replaceAll(cnjs[it], s, simplifyIte(
                          mk<ITE>(cmp,
                                  store->right()->last(),
-                                 mk<SELECT>(store->left(), s->right()))));}} */
-        }
-        if (safeToErase && !toErase.empty())
-        {
-          for (int e = toErase.size() - 1; e >= 0; e--) cnjs.erase(cnjs.begin() + toErase[e]);
-          cnjs.push_back(mk<EQ>(mk<SELECT>(store->left(), store->right()->right()), store->right()->last()));
+                                 mk<SELECT>(store->left(), s->right()))));
+            }
+          }
         }
       }
 
@@ -3004,26 +2986,26 @@ namespace ufo
     return conjoin(cnjs, exp->getFactory());
   }
 
-  struct QESubexpr
-  {
-    ExprVector& quantified;
-    QESubexpr (ExprVector& _quantified): quantified(_quantified) {};
+  // struct QESubexpr
+  // {
+  //   ExprVector& quantified;
+  //   QESubexpr (ExprVector& _quantified): quantified(_quantified) {};
 
-    Expr operator() (Expr exp)
-    {
-      if (isOpX<AND>(exp) && !containsOp<OR>(exp))
-      {
-        return simpleQE(exp, quantified);
-      }
-      return exp;
-    }
-  };
+  //   Expr operator() (Expr exp)
+  //   {
+  //     if (isOpX<AND>(exp) && !containsOp<OR>(exp))
+  //     {
+  //       return simpleQE(exp, quantified);
+  //     }
+  //     return exp;
+  //   }
+  // };
 
-  inline static Expr simpleQERecurs(Expr exp, ExprVector& quantified)
-  {
-    RW<QESubexpr> a(new QESubexpr(quantified));
-    return dagVisit (a, exp);
-  }
+  // inline static Expr simpleQERecurs(Expr exp, ExprVector& quantified)
+  // {
+  //   RW<QESubexpr> a(new QESubexpr(quantified));
+  //   return dagVisit (a, exp);
+  // }
 
   inline static Expr rewriteNegAnd(Expr exp)
   {

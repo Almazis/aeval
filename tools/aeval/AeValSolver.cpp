@@ -1,5 +1,4 @@
 #include "ae/AeValSolver.hpp"
-
 #include "ae/MBPUtils.hpp"
 
 using namespace ufo;
@@ -123,6 +122,26 @@ boost::tribool AeValSolver::solve()
     return res;
 }
 
+void AeValSolver::lastSanityCheck()
+{
+    ExprVector args;
+    for (auto temp : v) args.push_back(temp->last());
+    args.push_back(mk<IMPL>(s, t));
+    Expr sImpT =  mknary<EXISTS>(args);
+    Expr disjProj = mk<IMPL>(s, disjoin(projections, efac));
+    // outs() << "\nDisjunctions of projections: " << *disjProj << "\n";
+    // outs() << "exists v. s => t: " << sImpT << endl; //outTest
+    u.print(disjProj);
+    outs () << "\n\n";
+    // u.print(sImpT);
+    // outs () << "\n\n";
+    SMTUtils u1(t->getFactory());
+    outs() << "'exists v. s => t' isEquiv to 'disjunctions of projections': ";
+    // outs () << u1.implies(disjProj, sImpT);
+    // outs () << u1.implies(sImpT, disjProj) << "\n\n\n\n";
+}
+
+
 /**
  * Simple wrapper
  */
@@ -135,67 +154,71 @@ void ufo::aeSolveAndSkolemize(
   bool compact,
   bool split)
 {
-    ExprSet fa_qvars, ex_qvars;
-    ExprFactory &efac = s->getFactory();
-    SMTUtils u(efac);
+    outs() << "t at beginning of aeSolveAndSkolemize" << t << endl;
+    ExprSet t_quantified;
     if(t == NULL)
     {
         if(!(isOpX<FORALL>(s) && isOpX<EXISTS>(s->last())))
             exit(0);
+
         s = regularizeQF(s);
         t = s->last()->last();
         for(int i = 0; i < s->last()->arity() - 1; i++)
-            ex_qvars.insert(bind::fapp(s->last()->arg(i)));
-        for(int i = 0; i < s->arity() - 1; i++)
-            fa_qvars.insert(bind::fapp(s->arg(i)));
+            t_quantified.insert(bind::fapp(s->last()->arg(i)));
 
-        s = mk<TRUE>(efac);
+        s = mk<TRUE>(s->getFactory());
     }
     else
     {
-        filter(s, bind::IsConst(), inserter(fa_qvars, fa_qvars.begin()));
-        filter(t, bind::IsConst(), inserter(ex_qvars, ex_qvars.begin()));
-        minusSets(ex_qvars, fa_qvars);
+        ExprSet s_vars;
+        ExprSet t_vars;
+
+        filter(s, bind::IsConst(), inserter(s_vars, s_vars.begin()));
+        filter(t, bind::IsConst(), inserter(t_vars, t_vars.begin()));
+
+        t_quantified = t_vars;
+        minusSets(t_quantified, s_vars);
     }
 
     s = convertIntsToReals<DIV>(s);
     t = convertIntsToReals<DIV>(t);
 
-    if(debug >= 3)
-    {
-        outs() << "s part: " << s << "\n";
-        outs() << "t part: " << t << "\n";
-        outs() << "s vars: [ ";
-        for(auto &v : fa_qvars)
-            outs() << v << " ";
-        outs() << "]\n";
-        outs() << "t vars: [ ";
-        for(auto &v : ex_qvars)
-            outs() << v << " ";
-        outs() << "]\n";
-    }
+    SMTUtils u1(s->getFactory()); //for future t equivalence test.
 
     Expr t_orig = t;
-    if(opt)
+    Expr t_orig_qua = createQuantifiedFormulaRestr(t_orig, t_quantified);
+
+    t = simplifyBool(t);
+    ExprSet hardVars, cnjs;
+    filter(t, bind::IsConst(), inserter(hardVars, hardVars.begin()));
+    Expr t_qua = createQuantifiedFormulaRestr(t, t_quantified);
+
+    getConj(t, cnjs);
+    minusSets(hardVars, t_quantified);
+    // outs() << "hardVars after minusSets: " << conjoin(hardVars, t->getFactory()) << endl;
+
+    ExprSet elimSkol; // eliminated skolems
+    constantPropagation(hardVars, cnjs, elimSkol, true);
+
+    t = simpleQE(conjoin(cnjs, t->getFactory()), t_quantified, elimSkol);
+    t = simplifyBool(t);
+
+    if(debug && false) // outTest
     {
-        ExprSet cnjs;
-        getConj(t, cnjs);
-        constantPropagation(fa_qvars, cnjs, true);
-        // t = simpEquivClasses(fa_qvars, cnjs, efac);
-        t = conjoin(cnjs, efac);
-        t = simpleQE(t, ex_qvars);
-        t = simplifyBool(t);
-        if(debug >= 5)
-        {
-            outs() << "t part simplified: " << t << "\n";
-        }
+        outs() << "S: " << *s << "\n";
+        outs() << "T: \\exists ";
+        for(auto &a : t_quantified)
+            outs() << *a << ", ";
+        outs() << *t << "\n";
     }
 
-    AeValSolver ae(s, t, ex_qvars, debug, skol);
+    SMTUtils u(s->getFactory());
+    AeValSolver ae(s, t, t_quantified, debug, skol);
 
     if(ae.solve())
     {
         outs() << "Iter: " << ae.getPartitioningSize() << "; Result: invalid\n";
+        ae.lastSanityCheck();
         ae.printModelNeg(outs());
         outs() << "\nvalid subset:\n";
         u.serialize_formula(
@@ -204,32 +227,42 @@ void ufo::aeSolveAndSkolemize(
     else
     {
         outs() << "Iter: " << ae.getPartitioningSize() << "; Result: valid\n";
+        ae.lastSanityCheck();
         if(skol)
         {
             Expr skol = ae.getSkolemFunction(compact);
             if(split)
             {
+                outs() << "\telimSkol: " << conjoin(elimSkol, s->getFactory())
+                       << endl;
                 ExprVector sepSkols;
-                for(auto &evar : ex_qvars)
+                for(auto &evar : t_quantified)
                     sepSkols.push_back(mk<EQ>(
                       evar,
                       simplifyBool(simplifyArithm(ae.getSeparateSkol(evar)))));
+                for(auto t : elimSkol)
+                    sepSkols.push_back(t);
                 u.serialize_formula(sepSkols);
                 if(debug)
-                    outs() << "Sanity check [split]: "
-                           << (bool)(u.implies(
-                                mk<AND>(s, conjoin(sepSkols, s->getFactory())),
-                                t_orig))
-                           << "\n";
+                {
+                    for(auto t : elimSkol)
+                        sepSkols.push_back(t);
+                    // outs() << "Sanity check [split]: "
+                    //        << u.implies(
+                    //             mk<AND>(s, conjoin(sepSkols, s->getFactory())),
+                    //             t_orig)
+                    //        << "\n";
+                }
+
+                // u.outSanCheck("extractedSanChecks/multEx10.smt2");
             }
             else
             {
                 outs() << "\nextracted skolem:\n";
                 u.serialize_formula(simplifyBool(simplifyArithm(skol)));
-                if(debug)
-                    outs() << "Sanity check: "
-                           << (bool)(u.implies(mk<AND>(s, skol), t_orig))
-                           << "\n";
+                // if(debug)
+                    // outs() << "Sanity check: "
+                        //    << u.implies(mk<AND>(s, skol), t_orig) << "\n";
             }
         }
     }

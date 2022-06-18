@@ -2448,6 +2448,15 @@ namespace expr
                 return isIntVar(e) || isRealVar(e) || isBoolVar(e);
             }
       };
+
+      class IsSelect : public std::unary_function<Expr,bool>
+      {
+      public:
+        bool operator () (Expr e)
+        {
+          return isOpX<SELECT> (e);
+        }
+      };
     }
   }
 }

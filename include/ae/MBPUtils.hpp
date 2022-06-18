@@ -5,6 +5,8 @@
 
 namespace ufo {
   Expr mixQE(Expr s, Expr constVar, ExprMap &substsMap, ZSolver<EZ3>::Model &m);
+  Expr createQuantifiedFormulaRestr(Expr def, Expr a, bool forall = false);
+  Expr createQuantifiedFormulaRestr (Expr def, ExprSet& vars, bool forall = false);
 }
 
 #endif

@@ -34,7 +34,7 @@ int intOrReal(Expr s)
 }
 
 // create forall & exists formulas
-Expr static createQuantifiedFormulaRestr(Expr def, Expr a, bool forall = false)
+Expr ufo::createQuantifiedFormulaRestr(Expr def, Expr a, bool forall)
 { // want to have quantifiers in def
     ExprVector args;
     args.push_back(a->last()); // push variable y into vars.
@@ -43,6 +43,17 @@ Expr static createQuantifiedFormulaRestr(Expr def, Expr a, bool forall = false)
         return mknary<FORALL>(args);
     else
         return mknary<EXISTS>(args);
+}
+
+// overloaded create quantifiers that takes in ExprSet of vars.
+Expr ufo::createQuantifiedFormulaRestr (Expr def, ExprSet& vars, bool forall)
+{
+  if (vars.empty()) return def;
+  ExprVector args;
+  for (auto & a : vars) args.push_back(a->last());
+  args.push_back(def);
+  if (forall) return mknary<FORALL>(args);
+  else return mknary<EXISTS>(args);
 }
 
 // reverse the current comparison expression.
