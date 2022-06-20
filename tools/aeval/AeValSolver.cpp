@@ -3,49 +3,6 @@
 
 using namespace ufo;
 
-Expr getTrueLiterals(Expr ex, ZSolver<EZ3>::Model &m)
-{
-    ExprVector ites;
-    getITEs(ex, ites);
-    if (ites.empty())
-    {
-        ExprSet tmp;
-        // outs() << "Before calling getLiterals(ex, tmp)" << *ex << endl; //outTest
-        getLiterals(ex, tmp);
-
-        for (auto it = tmp.begin(); it != tmp.end(); ){
-            if (isOpX<TRUE>(m.eval(*it))) ++it;
-            else it = tmp.erase(it);
-        }
-        // outs() << "After calling getLiterals(ex, tmp): " << conjoin(tmp, efac) << endl; //outTest
-        return conjoin(tmp, ex->getFactory());
-    }
-    else
-    {
-        // eliminate ITEs first
-        for (auto it = ites.begin(); it != ites.end();)
-        {
-            if (isOpX<TRUE>(m((*it)->left())))
-            {
-                ex = replaceAll(ex, *it, (*it)->right());
-                ex = mk<AND>(ex, (*it)->left());
-            }
-            else if (isOpX<FALSE>(m((*it)->left())))
-            {
-                ex = replaceAll(ex, *it, (*it)->last());
-                ex = mk<AND>(ex, mkNeg((*it)->left()));
-            }
-            else
-            {
-                ex = replaceAll(ex, *it, (*it)->right()); // TODO
-                ex = mk<AND>(ex, mk<EQ>((*it)->right(), (*it)->last()));
-            }
-            it = ites.erase(it);
-        }
-        return getTrueLiterals(ex, m);
-    }
-}
-
 void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
 {
     Expr pr = t, tempPr = t;
@@ -55,9 +12,9 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
     {
         ExprMap map;
         ExprSet lits;
-        // u.getTrueLiterals(pr, m, lits, false);
-        tempPr = z3_qe_model_project_skolem(z3, m, exp, tempPr, map);
-        pr = simplifyArithm(mixQE(getTrueLiterals(pr, m), exp, substsMap, m));
+        u.getTrueLiterals(pr, m, lits, true);
+        tempPr = z3_qe_model_project_skolem(z3, m, exp, conjoin(lits, efac), map);
+        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, substsMap, m));
         if(m.eval(exp) != exp)
             modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
@@ -97,6 +54,7 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
     someEvals.push_back(modelMap);
     skolMaps.push_back(substsMap);
     projections.push_back(pr);
+    MBPSanityCheck(m, tempPr, pr);
     partitioning_size++;
 }
 
@@ -308,4 +266,21 @@ void ufo::aeSolveAndSkolemize(
             }
         }
     }
+}
+
+void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &tempPr, Expr &pr)
+{
+    SMTUtils u1(pr->getFactory());
+    // outs () << "Sanity MBP (1): " << isOpX<TRUE>(m.eval(pr)) << "\n";
+    assert(isOpX<TRUE>(m.eval(pr)));
+    ExprVector args;
+    for (auto temp : v) args.push_back(temp->last());
+    args.push_back(t);
+    // outs () << "Sanity MBP (2): " << (bool)u1.implies(pr, mknary<EXISTS>(args)) << "\n";
+    // outs() << "Checking implications: \n";
+    // outs() << "cur MBP => z3_qe_model_project_skolem: " << bool(u1.implies(pr, tempPr)) << endl;
+    // outs() << "z3_qe_model_project_skolem => cur MBP: " << bool(u1.implies(tempPr, pr)) << endl;
+    assert(u1.implies(pr, mknary<EXISTS>(args)));
+    assert(u1.implies(pr, tempPr));
+    assert(u1.implies(tempPr, pr));
 }

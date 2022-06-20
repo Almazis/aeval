@@ -104,7 +104,7 @@ namespace ufo
      * Extract MBP and local Skolem
      */
     void getMBPandSkolem(ZSolver<EZ3>::Model &m);
-    
+    void MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &tempPr, Expr &pr);
     void lastSanityCheck();
     /**
      * Valid Subset of S (if overall AE-formula is invalid)
