@@ -131,14 +131,16 @@ void AeValSolver::lastSanityCheck()
     Expr disjProj = mk<IMPL>(s, disjoin(projections, efac));
     // outs() << "\nDisjunctions of projections: " << *disjProj << "\n";
     // outs() << "exists v. s => t: " << sImpT << endl; //outTest
-    u.print(disjProj);
-    outs () << "\n\n";
+    // u.print(disjProj);
+    // outs () << "\n\n";
     // u.print(sImpT);
     // outs () << "\n\n";
     SMTUtils u1(t->getFactory());
-    outs() << "'exists v. s => t' isEquiv to 'disjunctions of projections': ";
-    // outs () << u1.implies(disjProj, sImpT);
-    // outs () << u1.implies(sImpT, disjProj) << "\n\n\n\n";
+    // outs() << "'exists v. s => t' isEquiv to 'disjunctions of projections': ";
+    // outs () << bool(u1.implies(disjProj, sImpT));
+    // outs () << bool(u1.implies(sImpT, disjProj)) << "\n\n\n\n";
+    assert(u1.implies(disjProj, sImpT));
+    assert(u1.implies(sImpT, disjProj));
 }
 
 
