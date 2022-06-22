@@ -523,9 +523,10 @@ Expr ufo::mixQE(
         if(true)
         {
             SMTUtils u1(s->getFactory());
-            outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
-                   << endl; //outTest
+            // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
+                //    << endl; //outTest
             // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl << endl; //outTest
+            assert(not (contains(output, constVar)));
             if(contains(output, constVar))
                 outs() << "MIXQE didn't remove var!\n";
         }
@@ -584,14 +585,16 @@ Expr ufo::mixQE(
     if(true)
     {
         SMTUtils u1(s->getFactory());
-        outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
-               << endl; //outTest
-        u1.print(output);
-        outs() << "\n";
+        // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
+        //        << endl; //outTest
+        // u1.print(output);
+        // outs() << "\n";
         // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl; //outTest
 
         if(contains(output, constVar))
             outs() << "MixedQE didn't eliminate var!" << endl;
+
+        assert(not (contains(output, constVar)));
         // if (u1.isEquiv(orig, output) == false) exit(0);
     }
     return output;

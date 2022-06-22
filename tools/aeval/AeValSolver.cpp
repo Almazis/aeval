@@ -156,7 +156,7 @@ void ufo::aeSolveAndSkolemize(
   bool compact,
   bool split)
 {
-    outs() << "t at beginning of aeSolveAndSkolemize" << t << endl;
+    // outs() << "t at beginning of aeSolveAndSkolemize" << t << endl;
     ExprSet t_quantified;
     if(t == NULL)
     {
