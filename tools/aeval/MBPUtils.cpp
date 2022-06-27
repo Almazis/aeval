@@ -520,7 +520,7 @@ Expr ufo::mixQE(
         output = simplifyBool(mk<OR>(
           replaceAll(s, constVar, mk<TRUE>(s->efac())),
           replaceAll(s, constVar, mk<FALSE>(s->efac()))));
-        if(true)
+        if(false)
         {
             SMTUtils u1(s->getFactory());
             // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
@@ -582,7 +582,7 @@ Expr ufo::mixQE(
     output = conjoin(outSet, s->getFactory()); //prepare for Sanity Check
 
     // SANITY CHECK
-    if(true)
+    if(false)
     {
         SMTUtils u1(s->getFactory());
         // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output

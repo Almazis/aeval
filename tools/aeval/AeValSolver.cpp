@@ -13,7 +13,7 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
         ExprMap map;
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
-        tempPr = z3_qe_model_project_skolem(z3, m, exp, conjoin(lits, efac), map);
+        // tempPr = z3_qe_model_project_skolem(z3, m, exp, conjoin(lits, efac), map);
         pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, substsMap, m));
         if(m.eval(exp) != exp)
             modelMap[exp] = mk<EQ>(exp, m.eval(exp));
@@ -54,7 +54,7 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
     someEvals.push_back(modelMap);
     skolMaps.push_back(substsMap);
     projections.push_back(pr);
-    MBPSanityCheck(m, tempPr, pr);
+    // MBPSanityCheck(m, tempPr, pr);
     partitioning_size++;
 }
 
