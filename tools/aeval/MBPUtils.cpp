@@ -503,10 +503,11 @@ Expr ufo::mixQE(
   Expr s,
   Expr constVar,
   ExprMap &substsMap,
-  ZSolver<EZ3>::Model &m)
+  ZSolver<EZ3>::Model &m,
+  SMTUtils &u,
+  int debug)
 {
-    Expr orig = createQuantifiedFormulaRestr(s, constVar),
-         output; //Prepare for sanity check
+    Expr orig = createQuantifiedFormulaRestr(s, constVar), output;
     ExprSet outSet, temp, sameTypeSet;
     if(constVar == NULL)
         return s; // taking care of the y does not exist situation.
@@ -520,12 +521,12 @@ Expr ufo::mixQE(
         output = simplifyBool(mk<OR>(
           replaceAll(s, constVar, mk<TRUE>(s->efac())),
           replaceAll(s, constVar, mk<FALSE>(s->efac()))));
-        if(false)
+        if(debug)
         {
-            SMTUtils u1(s->getFactory());
             // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
                 //    << endl; //outTest
             // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl << endl; //outTest
+            assert(u.isEquiv(orig, output));
             assert(not (contains(output, constVar)));
             if(contains(output, constVar))
                 outs() << "MIXQE didn't remove var!\n";
@@ -582,15 +583,14 @@ Expr ufo::mixQE(
     output = conjoin(outSet, s->getFactory()); //prepare for Sanity Check
 
     // SANITY CHECK
-    if(false)
+    if(debug)
     {
-        SMTUtils u1(s->getFactory());
         // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
         //        << endl; //outTest
         // u1.print(output);
         // outs() << "\n";
         // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl; //outTest
-
+        assert(u.isEquiv(orig, output));
         if(contains(output, constVar))
             outs() << "MixedQE didn't eliminate var!" << endl;
 

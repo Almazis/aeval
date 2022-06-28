@@ -10,16 +10,25 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
     ExprMap modelMap;
     for(auto &exp : v)
     {
-        ExprMap map;
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
-        // tempPr = z3_qe_model_project_skolem(z3, m, exp, conjoin(lits, efac), map);
-        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, substsMap, m));
+        
+        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, substsMap, m, u, debug));
         if(m.eval(exp) != exp)
             modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
+        if(debug)
+        {
+            ExprMap map;
+            ExprSet tempLits;
+            u.getTrueLiterals(tempPr, m, tempLits, false);
+            tempPr = z3_qe_model_project_skolem(z3, m, exp, conjoin(tempLits, efac), map);
+            MBPSanityCheck(m, tempPr, pr);
+        }
+
         if(debug >= 2)
         {
+
             outs() << "\nmodel " << partitioning_size << ":\n";
             for(auto &exp : stVars)
             {
@@ -54,7 +63,6 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
     someEvals.push_back(modelMap);
     skolMaps.push_back(substsMap);
     projections.push_back(pr);
-    // MBPSanityCheck(m, tempPr, pr);
     partitioning_size++;
 }
 
@@ -272,7 +280,6 @@ void ufo::aeSolveAndSkolemize(
 
 void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &tempPr, Expr &pr)
 {
-    SMTUtils u1(pr->getFactory());
     // outs () << "Sanity MBP (1): " << isOpX<TRUE>(m.eval(pr)) << "\n";
     assert(isOpX<TRUE>(m.eval(pr)));
     ExprVector args;
@@ -282,7 +289,7 @@ void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &tempPr, Expr &pr)
     // outs() << "Checking implications: \n";
     // outs() << "cur MBP => z3_qe_model_project_skolem: " << bool(u1.implies(pr, tempPr)) << endl;
     // outs() << "z3_qe_model_project_skolem => cur MBP: " << bool(u1.implies(tempPr, pr)) << endl;
-    assert(u1.implies(pr, mknary<EXISTS>(args)));
-    assert(u1.implies(pr, tempPr));
-    assert(u1.implies(tempPr, pr));
+    assert(u.implies(pr, mknary<EXISTS>(args)));
+    assert(u.implies(pr, tempPr));
+    assert(u.implies(tempPr, pr));
 }
