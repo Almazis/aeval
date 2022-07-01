@@ -526,10 +526,11 @@ Expr ufo::mixQE(
             // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
                 //    << endl; //outTest
             // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl << endl; //outTest
-            assert(u.isEquiv(orig, output));
+            boost::tribool equiv = u.isEquiv(orig, output);
+            if(boost::indeterminate(equiv))
+                outs() << "Solver returned undefined" << endl;
+            assert(equiv);
             assert(not (contains(output, constVar)));
-            if(contains(output, constVar))
-                outs() << "MIXQE didn't remove var!\n";
         }
         return output;
     }
@@ -589,13 +590,11 @@ Expr ufo::mixQE(
         //        << endl; //outTest
         // u1.print(output);
         // outs() << "\n";
-        // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl; //outTest
-        assert(u.isEquiv(orig, output));
-        if(contains(output, constVar))
-            outs() << "MixedQE didn't eliminate var!" << endl;
-
+        boost::tribool equiv = u.isEquiv(orig, output);
+        if(boost::indeterminate(equiv))
+            outs() << "Solver returned undefined" << endl;
+        assert(equiv);
         assert(not (contains(output, constVar)));
-        // if (u1.isEquiv(orig, output) == false) exit(0);
     }
     return output;
 }

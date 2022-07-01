@@ -7,6 +7,15 @@ import subprocess
 import re
 import csv
 
+try:
+    if sys.argv[1] == "--debug":
+        debug = ["--debug",  "1"]  
+    else:
+        print("Could not parse arguments")
+        exit(1)
+except IndexError:
+    debug = []
+
 suffixlen = len("s_part.smt2")
 
 projDir = os.getcwd() + "/.."
@@ -23,7 +32,7 @@ i = 1
 for t in tests_set:
     print(f"Test {i}/{numTests}")
     result = [t]
-    args = [projDir + "/build/tools/aeval/aeval", t + "s_part.smt2", t + "t_part.smt2"]
+    args = [projDir + "/build/tools/aeval/aeval"] + debug + [t + "s_part.smt2", t + "t_part.smt2"]
     t1 = time.time()
     try:
         output = subprocess.run(args, timeout=300, stdout=subprocess.PIPE)

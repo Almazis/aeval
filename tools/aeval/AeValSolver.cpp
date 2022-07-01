@@ -289,7 +289,11 @@ void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &tempPr, Expr &pr)
     // outs() << "Checking implications: \n";
     // outs() << "cur MBP => z3_qe_model_project_skolem: " << bool(u1.implies(pr, tempPr)) << endl;
     // outs() << "z3_qe_model_project_skolem => cur MBP: " << bool(u1.implies(tempPr, pr)) << endl;
-    assert(u.implies(pr, mknary<EXISTS>(args)));
-    assert(u.implies(pr, tempPr));
-    assert(u.implies(tempPr, pr));
+    boost::tribool impl = u.implies(pr, mknary<EXISTS>(args));
+    boost::tribool equiv = u.isEquiv(pr, tempPr);
+    boost::tribool undefined = boost::tribool::indeterminate_value;
+    if(boost::indeterminate(impl) || boost::indeterminate(equiv))
+        outs() << "Solver returned undefined" << endl;
+    assert(impl);
+    assert(equiv);
 }
