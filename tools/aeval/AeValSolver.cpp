@@ -18,13 +18,7 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
             modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
         if(debug)
-        {
-            ExprMap map;
-            ExprSet tempLits;
-            u.getTrueLiterals(tempPr, m, tempLits, false);
-            tempPr = z3_qe_model_project_skolem(z3, m, exp, conjoin(tempLits, efac), map);
-            MBPSanityCheck(m, tempPr, pr);
-        }
+            MBPSanityCheck(m, pr);
 
         if(debug >= 2)
         {
@@ -278,22 +272,14 @@ void ufo::aeSolveAndSkolemize(
     }
 }
 
-void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &tempPr, Expr &pr)
+void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &pr)
 {
-    // outs () << "Sanity MBP (1): " << isOpX<TRUE>(m.eval(pr)) << "\n";
     assert(isOpX<TRUE>(m.eval(pr)));
     ExprVector args;
     for (auto temp : v) args.push_back(temp->last());
     args.push_back(t);
-    // outs () << "Sanity MBP (2): " << (bool)u1.implies(pr, mknary<EXISTS>(args)) << "\n";
-    // outs() << "Checking implications: \n";
-    // outs() << "cur MBP => z3_qe_model_project_skolem: " << bool(u1.implies(pr, tempPr)) << endl;
-    // outs() << "z3_qe_model_project_skolem => cur MBP: " << bool(u1.implies(tempPr, pr)) << endl;
     boost::tribool impl = u.implies(pr, mknary<EXISTS>(args));
-    boost::tribool equiv = u.isEquiv(pr, tempPr);
-    boost::tribool undefined = boost::tribool::indeterminate_value;
-    if(boost::indeterminate(impl) || boost::indeterminate(equiv))
+    if(boost::indeterminate(impl))
         outs() << "Solver returned undefined" << endl;
     assert(impl);
-    assert(equiv);
 }

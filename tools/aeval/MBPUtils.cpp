@@ -452,10 +452,10 @@ ExprVector coefTrans(ExprVector sVec, Expr constVar)
     return outVec;
 }
 
-Expr intQE(ExprSet sSet, Expr constVar)
+Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 {
-    ExprSet outSet, upVec, loVec;
-    ExprVector sVec;
+    ExprSet outSet;
+    ExprVector sVec, loVec, upVec;
     Expr factoryGetter = *(sSet.begin());
     /* Transformation Stage */
     for(auto t : sSet)
@@ -473,27 +473,58 @@ Expr intQE(ExprSet sSet, Expr constVar)
     // Collecting upper & lower bound
     for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
     {
-        if(isOpX<GT>(*ite))
-            loVec.insert(*ite);
-        else if(isOpX<LEQ>(*ite))
-            upVec.insert(*ite);
+        if(isOpX<GT>(*ite)) {
+            Expr tmp = *ite;
+            loVec.push_back(tmp->right());
+        }
+        else if(isOpX<LEQ>(*ite)) {
+            Expr tmp = *ite;
+            upVec.push_back(tmp->right());            
+        }
     }
+
+    std::sort(loVec.begin(), loVec.end(),
+        [&m](Expr a, Expr b) {
+            Expr tmp = m.eval(mk<LT>(a, b) );
+            return isOpX<TRUE>(tmp);
+        }
+    );
+
+    std::sort(upVec.begin(), upVec.end(),
+        [&m](Expr a, Expr b) {
+            Expr tmp = m.eval(mk<LT>(a, b) );
+            return isOpX<TRUE>(tmp);
+        }
+    );
+
     sVec.clear();
+
+    if(!upVec.empty() && !loVec.empty()) {
+        Expr curBound = upVec.back();
+        Expr nextBound;
+        upVec.pop_back();
+        while(!upVec.empty()) {
+            nextBound = upVec.back();
+            sVec.push_back(mk<LEQ>(nextBound, curBound));
+            upVec.pop_back();
+            curBound = nextBound;
+        }
+
+        nextBound = loVec.back();
+        loVec.pop_back();
+        sVec.push_back(mk<LT>(nextBound, curBound));
+
+        while(!loVec.empty()) {
+            nextBound = loVec.back();
+            sVec.push_back(mk<LT>(nextBound, curBound));
+            loVec.pop_back();
+            curBound = nextBound;
+        }
+    }
     // Merging upper & lower bound.
     bool divFlag = boost::lexical_cast<int>(coef) > 1 ? true : false;
-    while(!loVec.empty())
-    {
-        Expr loBound = (*loVec.begin())->right();
-        for(auto loIte = upVec.begin(); loIte != upVec.end(); ++loIte)
-        {
-            Expr upBound = (*loIte)->right();
-            sVec.push_back(mk<LT>(loBound, upBound));
-            if(divFlag)
-                sVec.push_back(
-                  mk<LT>(mk<IDIV>(loBound, coef), mk<IDIV>(upBound, coef)));
-        }
-        loVec.erase(loVec.begin());
-    }
+    assert(!divFlag); // division not supported yet
+
     for(auto t : sVec)
         outSet.insert(t);
     return conjoin(outSet, factoryGetter->getFactory());
@@ -523,9 +554,8 @@ Expr ufo::mixQE(
           replaceAll(s, constVar, mk<FALSE>(s->efac()))));
         if(debug)
         {
-            // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
-                //    << endl; //outTest
-            // outs() << "mixQE() Equivalence Check: " << u1.isEquiv(orig, output) << endl << endl; //outTest
+            outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
+                   << endl; //outTest
             boost::tribool equiv = u.isEquiv(orig, output);
             if(boost::indeterminate(equiv))
                 outs() << "Solver returned undefined" << endl;
@@ -580,21 +610,12 @@ Expr ufo::mixQE(
     substsMap[constVar] = conjoin(sameTypeSet, s->getFactory());
     outSet.insert(
       yType == mk<REAL_TY>(s->efac()) ? realQE(sameTypeSet, constVar)
-                                      : intQE(sameTypeSet, constVar));
+                                      : intQE(sameTypeSet, constVar, m));
     output = conjoin(outSet, s->getFactory()); //prepare for Sanity Check
-
-    // SANITY CHECK
     if(debug)
     {
-        // outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
-        //        << endl; //outTest
-        // u1.print(output);
-        // outs() << "\n";
-        boost::tribool equiv = u.isEquiv(orig, output);
-        if(boost::indeterminate(equiv))
-            outs() << "Solver returned undefined" << endl;
-        assert(equiv);
-        assert(not (contains(output, constVar)));
+        outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
+                << endl; //outTest
     }
     return output;
 }

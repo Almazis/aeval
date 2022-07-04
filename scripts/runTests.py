@@ -30,7 +30,7 @@ resTable = [["test", "stdout", "time"]]
 numTests = len(tests_set)
 i = 1
 for t in tests_set:
-    print(f"Test {i}/{numTests}")
+    print(f"Test {i}/{numTests}: ", t)
     result = [t]
     args = [projDir + "/build/tools/aeval/aeval"] + debug + [t + "s_part.smt2", t + "t_part.smt2"]
     t1 = time.time()
