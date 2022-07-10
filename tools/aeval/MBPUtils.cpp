@@ -234,10 +234,10 @@ Expr vecElemInitReal(Expr t, Expr constVar)
     }
 }
 
-Expr realQE(ExprSet sSet, Expr constVar)
+Expr realQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 {
-    ExprSet outSet, upVec, loVec;
-    ExprVector sVec;
+    ExprSet outSet;
+    ExprVector sVec, upVec, loVec;
     Expr factoryGetter = *(sSet.begin());
     // Initializing Expression Vector, ensure y is not on rhs, ensure lhs doesn't have multiplication.
     for(auto t : sSet)
@@ -252,26 +252,66 @@ Expr realQE(ExprSet sSet, Expr constVar)
     for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
     {
         if(isOpX<GT>(*ite) || isOpX<GEQ>(*ite))
-            loVec.insert(*ite);
+            loVec.push_back(*ite);
         else if(isOpX<LT>(*ite) || isOpX<LEQ>(*ite))
-            upVec.insert(*ite);
+            upVec.push_back(*ite);
     }
-    sVec.clear();
-    // Merging upper & lower bound.
-    while(!loVec.empty())
-    {
-        Expr loBound = (*loVec.begin())->right();
-        bool upGEQ = isOpX<GEQ>(*loVec.begin()) ? true : false;
-        for(auto loIte = upVec.begin(); loIte != upVec.end(); ++loIte)
-        {
-            Expr upBound = (*loIte)->right();
-            if(upGEQ && isOpX<LEQ>(*loIte))
-                sVec.push_back(mk<LEQ>(loBound, upBound));
-            else
-                sVec.push_back(mk<LT>(loBound, upBound));
+
+    std::sort(loVec.begin(), loVec.end(),
+        [&m](Expr a, Expr b) {
+            Expr ra = a->right();
+            Expr rb = b->right();
+            if(isOpX<TRUE>(m.eval(mk<EQ>(ra,rb)))){
+                if (isOpX<GEQ>(b))
+                    return true;
+                return false;
+            }
+            return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
         }
-        loVec.erase(loVec.begin());
+    );
+
+    std::sort(upVec.begin(), upVec.end(),
+        [&m](Expr a, Expr b) {
+            Expr ra = a->right();
+            Expr rb = b->right();
+            if(isOpX<TRUE>(m.eval(mk<EQ>(ra,rb)))){
+                if (isOpX<LEQ>(b))
+                    return false;
+                return true;
+            }
+            return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
+        }
+    );
+
+    sVec.clear();
+    bool leqFlag = isOpX<GEQ>(loVec.back()) && isOpX<LEQ>(upVec.front());
+    if(!upVec.empty() && !loVec.empty()) {
+        Expr curBound = upVec.back()->right();
+        Expr nextBound;
+        upVec.pop_back();
+        while(!upVec.empty()) {
+            nextBound = upVec.back()->right();
+            sVec.push_back(mk<LEQ>(nextBound, curBound));
+            upVec.pop_back();
+            curBound = nextBound;
+        }
+
+        nextBound = loVec.back()->right();
+        loVec.pop_back();
+        if(leqFlag)
+            sVec.push_back(mk<LEQ>(nextBound, curBound));
+        else
+            sVec.push_back(mk<LT>(nextBound, curBound));
+        curBound = nextBound;
+
+        while(!loVec.empty()) {
+            nextBound = loVec.back()->right();
+            sVec.push_back(mk<LEQ>(nextBound, curBound));
+            loVec.pop_back();
+            curBound = nextBound;
+        }
     }
+
     for(auto t : sVec)
         outSet.insert(t);
     return conjoin(outSet, factoryGetter->getFactory());
@@ -499,6 +539,8 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 
     sVec.clear();
 
+    // Merging upper & lower bound.
+    // TODO: rewrite this
     if(!upVec.empty() && !loVec.empty()) {
         Expr curBound = upVec.back();
         Expr nextBound;
@@ -513,17 +555,18 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
         nextBound = loVec.back();
         loVec.pop_back();
         sVec.push_back(mk<LT>(nextBound, curBound));
+        curBound = nextBound;
 
         while(!loVec.empty()) {
             nextBound = loVec.back();
-            sVec.push_back(mk<LT>(nextBound, curBound));
+            sVec.push_back(mk<LEQ>(nextBound, curBound));
             loVec.pop_back();
             curBound = nextBound;
         }
     }
-    // Merging upper & lower bound.
+
     bool divFlag = boost::lexical_cast<int>(coef) > 1 ? true : false;
-    assert(!divFlag); // division not supported yet
+    assert(!divFlag); // multiplication not supported yet
 
     for(auto t : sVec)
         outSet.insert(t);
@@ -609,7 +652,7 @@ Expr ufo::mixQE(
     // Append map to substsMap
     substsMap[constVar] = conjoin(sameTypeSet, s->getFactory());
     outSet.insert(
-      yType == mk<REAL_TY>(s->efac()) ? realQE(sameTypeSet, constVar)
+      yType == mk<REAL_TY>(s->efac()) ? realQE(sameTypeSet, constVar, m)
                                       : intQE(sameTypeSet, constVar, m));
     output = conjoin(outSet, s->getFactory()); //prepare for Sanity Check
     if(debug)
