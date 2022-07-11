@@ -33,6 +33,71 @@ int intOrReal(Expr s)
     return 0; //mixture of int and real.
 }
 
+void laMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
+                     ZSolver<EZ3>::Model &m) 
+{
+    if(upVec.empty() || loVec.empty())
+        return;
+
+    std::sort(loVec.begin(), loVec.end(),
+        [&m](Expr a, Expr b) {
+            Expr ra = a->right();
+            Expr rb = b->right();
+            if(isOpX<TRUE>(m.eval(mk<EQ>(ra,rb)))){
+                if (isOpX<GEQ>(b))
+                    return true;
+                return false;
+            }
+            return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
+        }
+    );
+
+    std::sort(upVec.begin(), upVec.end(),
+        [&m](Expr a, Expr b) {
+            Expr ra = a->right();
+            Expr rb = b->right();
+            if(isOpX<TRUE>(m.eval(mk<EQ>(ra,rb)))){
+                if (isOpX<LEQ>(b))
+                    return false;
+                return true;
+            }
+            return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
+        }
+    );
+
+//    outs() << "upVec: ";
+//    for(auto ite = upVec.begin(); ite != upVec.end(); ite++)
+//        outs() << *ite << " ";
+//    outs() << endl;
+    bool leqFlag = isOpX<GEQ>(loVec.back()) && isOpX<LEQ>(upVec.front());
+
+    Expr curBound = upVec.back()->right();
+    Expr nextBound;
+    upVec.pop_back();
+    while(!upVec.empty()) {
+        nextBound = upVec.back()->right();
+        outSet.insert(mk<LEQ>(nextBound, curBound));
+        upVec.pop_back();
+        curBound = nextBound;
+    }
+
+    nextBound = loVec.back()->right();
+    loVec.pop_back();
+    if(leqFlag)
+        outSet.insert(mk<LEQ>(nextBound, curBound));
+    else
+        outSet.insert(mk<LT>(nextBound, curBound));
+    curBound = nextBound;
+
+    while(!loVec.empty()) {
+        nextBound = loVec.back()->right();
+        outSet.insert(mk<LEQ>(nextBound, curBound));
+        loVec.pop_back();
+        curBound = nextBound;
+    }
+
+}
+
 // create forall & exists formulas
 Expr ufo::createQuantifiedFormulaRestr(Expr def, Expr a, bool forall)
 { // want to have quantifiers in def
@@ -238,7 +303,6 @@ Expr realQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 {
     ExprSet outSet;
     ExprVector sVec, upVec, loVec;
-    Expr factoryGetter = *(sSet.begin());
     // Initializing Expression Vector, ensure y is not on rhs, ensure lhs doesn't have multiplication.
     for(auto t : sSet)
     {
@@ -257,64 +321,9 @@ Expr realQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
             upVec.push_back(*ite);
     }
 
-    std::sort(loVec.begin(), loVec.end(),
-        [&m](Expr a, Expr b) {
-            Expr ra = a->right();
-            Expr rb = b->right();
-            if(isOpX<TRUE>(m.eval(mk<EQ>(ra,rb)))){
-                if (isOpX<GEQ>(b))
-                    return true;
-                return false;
-            }
-            return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
-        }
-    );
-
-    std::sort(upVec.begin(), upVec.end(),
-        [&m](Expr a, Expr b) {
-            Expr ra = a->right();
-            Expr rb = b->right();
-            if(isOpX<TRUE>(m.eval(mk<EQ>(ra,rb)))){
-                if (isOpX<LEQ>(b))
-                    return false;
-                return true;
-            }
-            return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
-        }
-    );
-
-    sVec.clear();
-    bool leqFlag = isOpX<GEQ>(loVec.back()) && isOpX<LEQ>(upVec.front());
-    if(!upVec.empty() && !loVec.empty()) {
-        Expr curBound = upVec.back()->right();
-        Expr nextBound;
-        upVec.pop_back();
-        while(!upVec.empty()) {
-            nextBound = upVec.back()->right();
-            sVec.push_back(mk<LEQ>(nextBound, curBound));
-            upVec.pop_back();
-            curBound = nextBound;
-        }
-
-        nextBound = loVec.back()->right();
-        loVec.pop_back();
-        if(leqFlag)
-            sVec.push_back(mk<LEQ>(nextBound, curBound));
-        else
-            sVec.push_back(mk<LT>(nextBound, curBound));
-        curBound = nextBound;
-
-        while(!loVec.empty()) {
-            nextBound = loVec.back()->right();
-            sVec.push_back(mk<LEQ>(nextBound, curBound));
-            loVec.pop_back();
-            curBound = nextBound;
-        }
-    }
-
-    for(auto t : sVec)
-        outSet.insert(t);
-    return conjoin(outSet, factoryGetter->getFactory());
+    laMergeBounds(loVec, upVec, outSet, m);
+    
+    return conjoin(outSet, constVar->getFactory());
 }
 
 /* INTEGER HELPER FUNCTION */
@@ -496,7 +505,6 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 {
     ExprSet outSet;
     ExprVector sVec, loVec, upVec;
-    Expr factoryGetter = *(sSet.begin());
     /* Transformation Stage */
     for(auto t : sSet)
     {
@@ -511,66 +519,18 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
     Expr coef = *(sVec.end() - 1);
     sVec.pop_back();
     // Collecting upper & lower bound
-    for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
-    {
-        if(isOpX<GT>(*ite)) {
-            Expr tmp = *ite;
-            loVec.push_back(tmp->right());
-        }
-        else if(isOpX<LEQ>(*ite)) {
-            Expr tmp = *ite;
-            upVec.push_back(tmp->right());            
-        }
+    for(auto ite = sVec.begin(); ite != sVec.end(); ite++) {
+        if(isOpX<GT>(*ite))
+            loVec.push_back(*ite);
+        else if(isOpX<LEQ>(*ite))
+            upVec.push_back(*ite);
     }
-
-    std::sort(loVec.begin(), loVec.end(),
-        [&m](Expr a, Expr b) {
-            Expr tmp = m.eval(mk<LT>(a, b) );
-            return isOpX<TRUE>(tmp);
-        }
-    );
-
-    std::sort(upVec.begin(), upVec.end(),
-        [&m](Expr a, Expr b) {
-            Expr tmp = m.eval(mk<LT>(a, b) );
-            return isOpX<TRUE>(tmp);
-        }
-    );
-
-    sVec.clear();
-
-    // Merging upper & lower bound.
-    // TODO: rewrite this
-    if(!upVec.empty() && !loVec.empty()) {
-        Expr curBound = upVec.back();
-        Expr nextBound;
-        upVec.pop_back();
-        while(!upVec.empty()) {
-            nextBound = upVec.back();
-            sVec.push_back(mk<LEQ>(nextBound, curBound));
-            upVec.pop_back();
-            curBound = nextBound;
-        }
-
-        nextBound = loVec.back();
-        loVec.pop_back();
-        sVec.push_back(mk<LT>(nextBound, curBound));
-        curBound = nextBound;
-
-        while(!loVec.empty()) {
-            nextBound = loVec.back();
-            sVec.push_back(mk<LEQ>(nextBound, curBound));
-            loVec.pop_back();
-            curBound = nextBound;
-        }
-    }
+    laMergeBounds(loVec, upVec, outSet, m);
 
     bool divFlag = boost::lexical_cast<int>(coef) > 1 ? true : false;
     assert(!divFlag); // multiplication not supported yet
 
-    for(auto t : sVec)
-        outSet.insert(t);
-    return conjoin(outSet, factoryGetter->getFactory());
+    return conjoin(outSet, constVar->getFactory());
 }
 
 Expr ufo::mixQE(
@@ -601,7 +561,7 @@ Expr ufo::mixQE(
                    << endl; //outTest
             boost::tribool equiv = u.isEquiv(orig, output);
             if(boost::indeterminate(equiv))
-                outs() << "Solver returned undefined" << endl;
+                errs() << "Solver returned undefined" << endl;
             assert(equiv);
             assert(not (contains(output, constVar)));
         }

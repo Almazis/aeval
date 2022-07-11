@@ -280,6 +280,6 @@ void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &pr)
     args.push_back(t);
     boost::tribool impl = u.implies(pr, mknary<EXISTS>(args));
     if(boost::indeterminate(impl))
-        outs() << "Solver returned undefined" << endl;
+        errs() << "Solver returned undefined" << endl;
     assert(impl);
 }
