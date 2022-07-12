@@ -7,30 +7,26 @@ using namespace ufo;
 int intOrReal(Expr s)
 {
     ExprVector sVec;
-    int realCt = 0, intCt = 0;
+    bool realType = false, intType = false;
     filter(s, bind::IsNumber(), back_inserter(sVec));
     filter(s, bind::IsConst(), back_inserter(sVec));
-    for(auto ite : sVec)
-    {
-        if(isOpX<MPQ>(ite))
-            outs() << "real? " << *ite << endl;
+    for(auto ite : sVec) {
         if(bind::isIntConst(ite) || isOpX<MPZ>(ite))
-            ++intCt;
+            intType = true;
         else if(bind::isRealConst(ite) || isOpX<MPQ>(ite))
-            ++realCt;
+            realType = true;
         else
-            outs() << "Error identifying: " << *ite << " in intOrReal()."
-                   << endl;
+            assert(false); // Error identifying
     }
-    if(realCt == 0 && intCt > 0)
-        return 1;
-    else if(realCt > 0 && intCt == 0)
-        return -1;
-    else if(realCt == 0 && intCt == 0)
-        return 2;
-    outs() << "For s: " << s << "\n\tCurrent realCt = " << realCt
-           << "\n\tCurrent intCt = " << intCt << endl;
-    return 0; //mixture of int and real.
+
+    if (realType && intType)
+        return MIXTYPE;
+    else if (realType)
+        return REALTYPE;
+    else if (intType)
+        return INTTYPE;
+    else
+        return NOTYPE; // t == true
 }
 
 void laMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
@@ -588,20 +584,13 @@ Expr ufo::mixQE(
                 assert(0);
             }
             int intVSreal = intOrReal(t);
-            // outs() << bind::typeOf(t->right()) << "\nyType: " << yType << "\nintVSreal: " << intVSreal << endl; //outTest
-            if(yType == mk<REAL_TY>(s->efac()) && (intVSreal == -1))
+
+            if (yType == mk<REAL_TY>(s->efac()) && (intVSreal == REALTYPE))
                 sameTypeSet.insert(t);
-            else if(yType == mk<INT_TY>(s->efac()) && (intVSreal == 1))
+            else if (yType == mk<INT_TY>(s->efac()) && (intVSreal == INTTYPE))
                 sameTypeSet.insert(t);
-            else if(intVSreal != 2)
-            { // if intVSreal == 2, thus t == true, so do nothing in that case.
-                outs() << "Nothing eliminated\nyType: " << yType
-                       << "\nintVSreal: " << intVSreal << endl; //outTest
-                outs() << "contains var? " << contains(s, constVar)
-                       << endl; //outTest
-                outs() << "s: " << s << endl;
-                return s;
-            } //no change can be made, return original expr.
+            else if (intVSreal != NOTYPE)
+                return s; // no change can be made, return original expr.
         }
         else
             outSet.insert(t);
@@ -615,7 +604,7 @@ Expr ufo::mixQE(
       yType == mk<REAL_TY>(s->efac()) ? realQE(sameTypeSet, constVar, m)
                                       : intQE(sameTypeSet, constVar, m));
     output = conjoin(outSet, s->getFactory()); //prepare for Sanity Check
-    if(debug)
+    if(debug >= 2)
     {
         outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
                 << endl; //outTest
