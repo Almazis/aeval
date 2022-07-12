@@ -318,26 +318,21 @@ Expr realQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 
 /* INTEGER HELPER FUNCTION */
 static Expr divTransHelper(Expr t, Expr constVar)
-{ // only for GT & LEQ Expr
-    if(isOpX<GT>(t) || isOpX<LEQ>(t))
-    {
-        Expr lhs = t->left(), rhs = t->right();
-        Expr one = mkTerm(mpz_class(1), t->getFactory());
-        Expr y, coef;
-
-        if(contains(lhs->left(), constVar))
-            y = lhs->left(), coef = lhs->right();
-        else
-            y = lhs->right(), coef = lhs->left();
-        return mk(
-          t->op(), y, mk<MINUS>(mk<MULT>(mk<PLUS>(rhs, one), coef), one));
-    }
-    else
-    {
-        outs() << "Error, divTransInt(): " << *t << " is not GT nor LEQ."
-               << endl;
+{
+    // only for GT & LEQ Expr
+    if(!isOpX<GT>(t) && !isOpX<LEQ>(t)) {
+        outs() << "Error, divTransInt(): " << *t << " is not GT nor LEQ." << endl;
         return t;
     }
+    Expr lhs = t->left(), rhs = t->right();
+    Expr one = mkTerm(mpz_class(1), t->getFactory());
+    Expr y, coef;
+
+    if(contains(lhs->left(), constVar))
+        y = lhs->left(), coef = lhs->right();
+    else
+        assert(false);
+    return mk(t->op(), y, mk<MINUS>(mk<MULT>(mk<PLUS>(rhs, one), coef), one));
 }
 
 // For single integer Expr normalization, only capable of handling LT & GEQ Exprs
@@ -349,7 +344,7 @@ Expr divMultTransInt(Expr t, Expr constVar)
         int coef = 1;
         while(true)
         {
-            // outs() << "t during transformation: " << *t << endl;
+            outs() << "t during transformation: " << *t << endl;
             if(lhs->arity() == 1)
                 break;
             else if(isOpX<MULT>(lhs))
@@ -402,7 +397,7 @@ Expr divMultTransInt(Expr t, Expr constVar)
 
 static Expr vecElemInitInt(Expr t, Expr constVar)
 {
-    // outs() << "VecElemInitInt beginning t: " << t << endl; //outTest
+    outs() << "VecElemInitInt beginning t: " << t << endl; //outTest
     if(isOp<ComparissonOp>(t))
     {
         //EQ or NEQ expression are not currently supported.
@@ -415,7 +410,7 @@ static Expr vecElemInitInt(Expr t, Expr constVar)
         // Single conjunct Mult & Div transformation.
         if(isOp<MULT>(t->left()) || isOp<IDIV>(t->left()))
             t = divMultTransInt(t, constVar);
-        // outs() << "VecElemInitInt after t: " << *t << endl << endl; //outTest
+        outs() << "VecElemInitInt after t: " << *t << endl << endl; //outTest
         return t;
     }
     else
