@@ -344,7 +344,7 @@ Expr divMultTransInt(Expr t, Expr constVar)
         int coef = 1;
         while(true)
         {
-            outs() << "t during transformation: " << *t << endl;
+            // outs() << "t during transformation: " << *t << endl;
             if(lhs->arity() == 1)
                 break;
             else if(isOpX<MULT>(lhs))
@@ -397,7 +397,7 @@ Expr divMultTransInt(Expr t, Expr constVar)
 
 static Expr vecElemInitInt(Expr t, Expr constVar)
 {
-    outs() << "VecElemInitInt beginning t: " << t << endl; //outTest
+    // outs() << "VecElemInitInt beginning t: " << t << endl; //outTest
     if(isOp<ComparissonOp>(t))
     {
         //EQ or NEQ expression are not currently supported.
@@ -410,7 +410,7 @@ static Expr vecElemInitInt(Expr t, Expr constVar)
         // Single conjunct Mult & Div transformation.
         if(isOp<MULT>(t->left()) || isOp<IDIV>(t->left()))
             t = divMultTransInt(t, constVar);
-        outs() << "VecElemInitInt after t: " << *t << endl << endl; //outTest
+        // outs() << "VecElemInitInt after t: " << *t << endl << endl; //outTest
         return t;
     }
     else

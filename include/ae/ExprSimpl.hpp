@@ -587,18 +587,21 @@ namespace ufo
     }
 
     r = mkplus(rhs, e->getFactory());
-
-    outs() << "coef: " << coef << endl;
   
     if (coef == 0){
       l = mkMPZ (0, e->getFactory());
     } else if (coef == 1){
       l = var;
-    } else {
-      // coef = p / q;
+    } else if (coef < 0) {
+      coef = -coef;
       l = mk<MULT>(mkMPZ(numerator(coef), e->getFactory()), var);
       if (denominator(coef) != 1)
         l = mk<IDIV>(l, mkMPZ(denominator(coef), e->getFactory()));
+      l = mk<UN_MINUS>(l);
+    } else {
+      l = mk<MULT>(mkMPZ(numerator(coef), e->getFactory()), var);
+      if (denominator(coef) != 1)
+        l = mk<IDIV>(l, mkMPZ(denominator(coef), e->getFactory()));      
     }
 
     return mk<T>(l,r);
@@ -751,7 +754,7 @@ namespace ufo
   /**
    * Move var v to LHS of each expression and simplify
    */
-  inline static Expr ineqSimplifier(Expr v, Expr exp, bool merge = false){
+  inline static Expr ineqSimplifier(Expr v, Expr exp, bool merge = false) {
     ExprSet substsMap;
     if (isOpX<AND>(exp)){
       ExprSet cnjs;
