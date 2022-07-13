@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tools/aeval/aeval",
-            "args": ["/home/almazis/git/aeval/bench/divMultTests/divEx1.smt2"],
+            "args": ["/home/almazis/git/aeval/bench/divMultTests/divEx2.smt2"],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
             "environment": [],

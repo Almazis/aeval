@@ -1,6 +1,7 @@
 #ifndef EXPRSIMPL__HPP__
 #define EXPRSIMPL__HPP__
 #include <assert.h>
+#include <boost/rational.hpp>
 
 #include "ufo/Smt/EZ3.hh"
 
@@ -548,15 +549,29 @@ namespace ufo
     }
 
     // combine results
-
-    cpp_int coef = 0;
+    rational<cpp_int> coef(0, 1);
     for (auto it = lhs.begin(); it != lhs.end(); )
     {
       bool found = false;
       if (*it == var) { coef++; found = true; }
-      if (isOpX<UN_MINUS>(*it) && (*it)->left() == var) { coef--; found = true; }
+      if (isOpX<UN_MINUS>(*it)) {
+        Expr subExpr = (*it)->left();
+        if(subExpr == var) { coef--; found = true; }
+        else if (isOpX<MULT>(subExpr) && 2 == subExpr->arity() && isOpX<MPZ>(subExpr->left()) && subExpr->right() == var) {
+          coef -= lexical_cast<cpp_int>(subExpr->left());
+          found = true;
+        }
+        else if (isOp<IDIV>(subExpr) && 2 == subExpr->arity() && isOpX<MPZ>(subExpr->right()) && subExpr->left() == var) {
+          coef -= rational<cpp_int>(1, lexical_cast<cpp_int>(subExpr->right()));
+          found = true;
+        } 
+      }
       if (isOpX<MULT>(*it) && 2 == (*it)->arity() && isOpX<MPZ>((*it)->left()) && (*it)->right() == var) {
         coef += lexical_cast<cpp_int>((*it)->left());
+        found = true;
+      }
+      if (isOp<IDIV>(*it) && 2 == (*it)->arity() && isOpX<MPZ>((*it)->right()) && (*it)->left() == var) {
+        coef += rational<cpp_int>(1, lexical_cast<cpp_int>((*it)->right()));
         found = true;
       }
 
@@ -566,19 +581,24 @@ namespace ufo
 
     if (!lhs.empty())
     {
-//      errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
-//             << *conjoin (lhs, e->getFactory()) << "\n";
+      errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
+             << *conjoin (lhs, e->getFactory()) << "\n";
       return e;
     }
 
     r = mkplus(rhs, e->getFactory());
 
+    outs() << "coef: " << coef << endl;
+  
     if (coef == 0){
       l = mkMPZ (0, e->getFactory());
     } else if (coef == 1){
       l = var;
     } else {
-      l = mk<MULT>(mkMPZ(coef, e->getFactory()), var);
+      // coef = p / q;
+      l = mk<MULT>(mkMPZ(numerator(coef), e->getFactory()), var);
+      if (denominator(coef) != 1)
+        l = mk<IDIV>(l, mkMPZ(denominator(coef), e->getFactory()));
     }
 
     return mk<T>(l,r);
