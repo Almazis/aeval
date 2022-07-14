@@ -5,15 +5,16 @@ using namespace ufo;
 
 void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
 {
-    Expr pr = t, tempPr = t;
+    Expr pr = t;
     ExprMap substsMap;
     ExprMap modelMap;
     for(auto &exp : v)
     {
+        ExprMap map;
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
         
-        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, substsMap, m, u, debug));
+        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, map, m, u, debug));
         if(m.eval(exp) != exp)
             modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
@@ -41,8 +42,7 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
             pprint(pr, 2);
         }
 
-        for(auto it = lits.begin(); it != lits.end();)
-        {
+        for(auto it = lits.begin(); it != lits.end();) {
             if(contains(*it, exp))
                 ++it;
             else
@@ -159,65 +159,75 @@ void ufo::aeSolveAndSkolemize(
   bool split)
 {
     // outs() << "t at beginning of aeSolveAndSkolemize" << t << endl;
-    ExprSet t_quantified;
+    ExprSet fa_qvars, ex_qvars;
+    ExprFactory& efac = s->getFactory();
+    SMTUtils u(efac);
+
     if(t == NULL)
     {
         if(!(isOpX<FORALL>(s) && isOpX<EXISTS>(s->last())))
             exit(0);
-
         s = regularizeQF(s);
         t = s->last()->last();
-        for(int i = 0; i < s->last()->arity() - 1; i++)
-            t_quantified.insert(bind::fapp(s->last()->arg(i)));
+        for (int i = 0; i < s->last()->arity() - 1; i++)
+            ex_qvars.insert(bind::fapp(s->last()->arg(i)));
+        for (int i = 0; i < s->arity() - 1; i++)
+            fa_qvars.insert(bind::fapp(s->arg(i)));
 
         s = mk<TRUE>(s->getFactory());
     }
     else
     {
-        ExprSet s_vars;
-        ExprSet t_vars;
-
-        filter(s, bind::IsConst(), inserter(s_vars, s_vars.begin()));
-        filter(t, bind::IsConst(), inserter(t_vars, t_vars.begin()));
-
-        t_quantified = t_vars;
-        minusSets(t_quantified, s_vars);
+        filter(s, bind::IsConst(), inserter(fa_qvars, fa_qvars.begin()));
+        filter(t, bind::IsConst(), inserter(ex_qvars, ex_qvars.begin()));
+        minusSets(ex_qvars, fa_qvars);
     }
 
     s = convertIntsToReals<DIV>(s);
     t = convertIntsToReals<DIV>(t);
 
-    SMTUtils u1(s->getFactory()); //for future t equivalence test.
-
-    Expr t_orig = t;
-    Expr t_orig_qua = createQuantifiedFormulaRestr(t_orig, t_quantified);
-
-    t = simplifyBool(t);
-    ExprSet hardVars, cnjs;
-    filter(t, bind::IsConst(), inserter(hardVars, hardVars.begin()));
-    Expr t_qua = createQuantifiedFormulaRestr(t, t_quantified);
-
-    getConj(t, cnjs);
-    minusSets(hardVars, t_quantified);
-    // outs() << "hardVars after minusSets: " << conjoin(hardVars, t->getFactory()) << endl;
-
-    ExprSet elimSkol; // eliminated skolems
-    constantPropagation(hardVars, cnjs, elimSkol, true);
-
-    t = simpleQE(conjoin(cnjs, t->getFactory()), t_quantified, elimSkol);
-    t = simplifyBool(t);
-
-    if(debug && false) // outTest
-    {
-        outs() << "S: " << *s << "\n";
-        outs() << "T: \\exists ";
-        for(auto &a : t_quantified)
-            outs() << *a << ", ";
-        outs() << *t << "\n";
+    if(debug >= 3) {
+      outs() << "s part: " << s << "\n";
+      outs() << "t part: " << t << "\n";
+      outs() << "s vars: [ ";
+      for (auto &v : fa_qvars) outs() << v << " ";
+      outs() << "]\n";
+      outs() << "t vars: [ ";
+      for (auto &v : ex_qvars) outs() << v << " ";
+      outs() << "]\n";
     }
 
-    SMTUtils u(s->getFactory());
-    AeValSolver ae(s, t, t_quantified, debug, skol);
+    Expr t_orig = t;
+    // t = simplifyBool(t);
+    // if (opt)
+    // {
+    //   ExprSet cnjs;
+    //   getConj(t, cnjs);
+    //   constantPropagation(fa_qvars, cnjs, true);
+    //   // t = simpEquivClasses(fa_qvars, cnjs, efac);
+    //   t = conjoin(cnjs, efac);
+    //   t = simpleQE(t, ex_qvars);
+    //   t = simplifyBool(t);
+    //   if(debug >= 5) {
+    //     outs() << "t part simplified: " << t << "\n";
+    //   }
+    // }
+
+    // ExprSet hardVars, cnjs;
+    // filter(t, bind::IsConst(), inserter(hardVars, hardVars.begin()));
+    // Expr t_qua = createQuantifiedFormulaRestr(t, t_quantified);
+
+    // getConj(t, cnjs);
+    // minusSets(hardVars, t_quantified);
+    // // outs() << "hardVars after minusSets: " << conjoin(hardVars, t->getFactory()) << endl;
+
+    // ExprSet elimSkol; // eliminated skolems
+    // constantPropagation(hardVars, cnjs, elimSkol, true);
+
+    // t = simpleQE(conjoin(cnjs, t->getFactory()), t_quantified, elimSkol);
+    // t = simplifyBool(t);
+
+    AeValSolver ae(s, t, ex_qvars, debug, skol);
 
     if(ae.solve())
     {
@@ -237,36 +247,43 @@ void ufo::aeSolveAndSkolemize(
             Expr skol = ae.getSkolemFunction(compact);
             if(split)
             {
-                outs() << "\telimSkol: " << conjoin(elimSkol, s->getFactory())
-                       << endl;
+                // outs() << "\telimSkol: " << conjoin(elimSkol, s->getFactory())
+                //        << endl;
                 ExprVector sepSkols;
-                for(auto &evar : t_quantified)
+                for(auto &evar : ex_qvars)
                     sepSkols.push_back(mk<EQ>(
                       evar,
                       simplifyBool(simplifyArithm(ae.getSeparateSkol(evar)))));
-                for(auto t : elimSkol)
-                    sepSkols.push_back(t);
+                // for(auto t : elimSkol)
+                //     sepSkols.push_back(t);
                 u.serialize_formula(sepSkols);
                 if(debug)
                 {
-                    for(auto t : elimSkol)
-                        sepSkols.push_back(t);
-                    // outs() << "Sanity check [split]: "
-                    //        << u.implies(
+                    // for(auto t : elimSkol)
+                    //     sepSkols.push_back(t);
+                    // boost::tribool impl = u.implies(
                     //             mk<AND>(s, conjoin(sepSkols, s->getFactory())),
-                    //             t_orig)
-                    //        << "\n";
-                }
+                    //             t_orig);
+                    // if(boost::indeterminate(impl))
+                    //     errs() << "Solver returned undefined" << endl;
+                    // assert(impl);
 
-                // u.outSanCheck("extractedSanChecks/multEx10.smt2");
+                    boost::tribool impl = u.implies(mk<AND>(s, conjoin(sepSkols, s->getFactory())), t_orig);
+                    if(boost::indeterminate(impl))
+                        errs() << "Solver returned undefined" << endl;
+                    assert(impl);
+                }
             }
             else
             {
                 outs() << "\nextracted skolem:\n";
                 u.serialize_formula(simplifyBool(simplifyArithm(skol)));
-                // if(debug)
-                    // outs() << "Sanity check: "
-                        //    << u.implies(mk<AND>(s, skol), t_orig) << "\n";
+                if(debug) {
+                    boost::tribool impl = u.implies(mk<AND>(s, skol), t_orig);
+                    if(boost::indeterminate(impl))
+                        errs() << "Solver returned undefined" << endl;
+                    assert(impl);
+                }
             }
         }
     }
