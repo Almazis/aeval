@@ -1,5 +1,6 @@
 #include "ae/AeValSolver.hpp"
 #include "ae/MBPUtils.hpp"
+#include "ae/ExprSimpl.hpp"
 
 using namespace ufo;
 
@@ -13,14 +14,14 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
         ExprMap map;
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
-        
+
         pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, map, m, u, debug));
         if(m.eval(exp) != exp)
             modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
         if(debug)
             MBPSanityCheck(m, pr);
-
+    
         if(debug >= 2)
         {
 
@@ -145,27 +146,14 @@ void AeValSolver::lastSanityCheck()
     assert(u1.implies(sImpT, disjProj));
 }
 
-
-/**
- * Simple wrapper
- */
-void ufo::aeSolveAndSkolemize(
-  Expr s,
-  Expr t,
-  bool skol,
-  int debug,
-  bool opt,
-  bool compact,
-  bool split)
+void ufo::aeSolveAndSkolemize(Expr s, Expr t, bool skol, int debug, bool opt, bool compact, bool split)
 {
-    // outs() << "t at beginning of aeSolveAndSkolemize" << t << endl;
     ExprSet fa_qvars, ex_qvars;
     ExprFactory& efac = s->getFactory();
     SMTUtils u(efac);
 
-    if(t == NULL)
-    {
-        if(!(isOpX<FORALL>(s) && isOpX<EXISTS>(s->last())))
+    if(t == NULL) {
+        if(!(isOpX<FORALL>(s) && isOpX<EXISTS>(s->last()))) 
             exit(0);
         s = regularizeQF(s);
         t = s->last()->last();
@@ -174,13 +162,11 @@ void ufo::aeSolveAndSkolemize(
         for (int i = 0; i < s->arity() - 1; i++)
             fa_qvars.insert(bind::fapp(s->arg(i)));
 
-        s = mk<TRUE>(s->getFactory());
-    }
-    else
-    {
-        filter(s, bind::IsConst(), inserter(fa_qvars, fa_qvars.begin()));
-        filter(t, bind::IsConst(), inserter(ex_qvars, ex_qvars.begin()));
-        minusSets(ex_qvars, fa_qvars);
+        s = mk<TRUE>(efac);
+    } else {
+      filter (s, bind::IsConst (), inserter (fa_qvars, fa_qvars.begin()));
+      filter (t, bind::IsConst (), inserter (ex_qvars, ex_qvars.begin()));
+      minusSets(ex_qvars, fa_qvars);
     }
 
     s = convertIntsToReals<DIV>(s);
@@ -198,84 +184,43 @@ void ufo::aeSolveAndSkolemize(
     }
 
     Expr t_orig = t;
-    // t = simplifyBool(t);
-    // if (opt)
-    // {
-    //   ExprSet cnjs;
-    //   getConj(t, cnjs);
-    //   constantPropagation(fa_qvars, cnjs, true);
-    //   // t = simpEquivClasses(fa_qvars, cnjs, efac);
-    //   t = conjoin(cnjs, efac);
-    //   t = simpleQE(t, ex_qvars);
-    //   t = simplifyBool(t);
-    //   if(debug >= 5) {
-    //     outs() << "t part simplified: " << t << "\n";
-    //   }
-    // }
-
-    // ExprSet hardVars, cnjs;
-    // filter(t, bind::IsConst(), inserter(hardVars, hardVars.begin()));
-    // Expr t_qua = createQuantifiedFormulaRestr(t, t_quantified);
-
-    // getConj(t, cnjs);
-    // minusSets(hardVars, t_quantified);
-    // // outs() << "hardVars after minusSets: " << conjoin(hardVars, t->getFactory()) << endl;
-
-    // ExprSet elimSkol; // eliminated skolems
-    // constantPropagation(hardVars, cnjs, elimSkol, true);
-
-    // t = simpleQE(conjoin(cnjs, t->getFactory()), t_quantified, elimSkol);
-    // t = simplifyBool(t);
+    if (opt)
+    {
+      ExprSet cnjs;
+      getConj(t, cnjs);
+      constantPropagation(fa_qvars, cnjs, true);
+      // t = simpEquivClasses(fa_qvars, cnjs, efac);
+      t = conjoin(cnjs, efac);
+      t = simpleQE(t, ex_qvars);
+      t = simplifyBool(t);
+      if(debug >= 5) {
+        outs() << "t part simplified: " << t << "\n";
+      }
+    }
 
     AeValSolver ae(s, t, ex_qvars, debug, skol);
 
-    if(ae.solve())
-    {
-        outs() << "Iter: " << ae.getPartitioningSize() << "; Result: invalid\n";
-        ae.lastSanityCheck();
+    if(ae.solve()) {
+        outs () << "Iter: " << ae.getPartitioningSize() << "; Result: invalid\n";
         ae.printModelNeg(outs());
         outs() << "\nvalid subset:\n";
-        u.serialize_formula(
-          simplifyBool(simplifyArithm(ae.getValidSubset(compact))));
-    }
-    else
-    {
-        outs() << "Iter: " << ae.getPartitioningSize() << "; Result: valid\n";
-        ae.lastSanityCheck();
-        if(skol)
-        {
+        u.serialize_formula(simplifyBool(simplifyArithm(ae.getValidSubset(compact))));
+    } else {
+        outs () << "Iter: " << ae.getPartitioningSize() << "; Result: valid\n";
+        if (skol) {
             Expr skol = ae.getSkolemFunction(compact);
-            if(split)
-            {
-                // outs() << "\telimSkol: " << conjoin(elimSkol, s->getFactory())
-                //        << endl;
+            if (split) {
                 ExprVector sepSkols;
-                for(auto &evar : ex_qvars)
-                    sepSkols.push_back(mk<EQ>(
-                      evar,
-                      simplifyBool(simplifyArithm(ae.getSeparateSkol(evar)))));
-                // for(auto t : elimSkol)
-                //     sepSkols.push_back(t);
+                for (auto & evar : ex_qvars) sepSkols.push_back(mk<EQ>(evar,
+                           simplifyBool(simplifyArithm(ae.getSeparateSkol(evar)))));
                 u.serialize_formula(sepSkols);
-                if(debug)
-                {
-                    // for(auto t : elimSkol)
-                    //     sepSkols.push_back(t);
-                    // boost::tribool impl = u.implies(
-                    //             mk<AND>(s, conjoin(sepSkols, s->getFactory())),
-                    //             t_orig);
-                    // if(boost::indeterminate(impl))
-                    //     errs() << "Solver returned undefined" << endl;
-                    // assert(impl);
-
+                if (debug) {
                     boost::tribool impl = u.implies(mk<AND>(s, conjoin(sepSkols, s->getFactory())), t_orig);
                     if(boost::indeterminate(impl))
                         errs() << "Solver returned undefined" << endl;
                     assert(impl);
                 }
-            }
-            else
-            {
+            } else {
                 outs() << "\nextracted skolem:\n";
                 u.serialize_formula(simplifyBool(simplifyArithm(skol)));
                 if(debug) {

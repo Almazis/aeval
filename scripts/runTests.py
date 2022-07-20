@@ -32,7 +32,7 @@ i = 1
 for t in tests_set:
     print(f"Test {i}/{numTests}: ", t)
     result = [t]
-    args = [projDir + "/build/tools/aeval/aeval"] + debug + [t + "s_part.smt2", t + "t_part.smt2"]
+    args = [projDir + "/build/tools/aeval/aeval", "--skol"] + debug + [t + "s_part.smt2", t + "t_part.smt2"]
     t1 = time.time()
     try:
         output = subprocess.run(args, timeout=300, stdout=subprocess.PIPE)

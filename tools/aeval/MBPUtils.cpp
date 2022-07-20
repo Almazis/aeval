@@ -534,13 +534,14 @@ Expr ufo::mixQE(
           replaceAll(s, constVar, mk<FALSE>(s->efac()))));
         if(debug)
         {
-            outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
-                   << endl; //outTest
             boost::tribool equiv = u.isEquiv(orig, output);
             if(boost::indeterminate(equiv))
                 errs() << "Solver returned undefined" << endl;
             assert(equiv);
             assert(not (contains(output, constVar)));
+            if (debug >= 2)
+                outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
+                       << endl; //outTest        
         }
         return output;
     }

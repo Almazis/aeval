@@ -592,6 +592,8 @@ namespace ufo
       l = mkMPZ (0, e->getFactory());
     } else if (coef == 1){
       l = var;
+    } else if (coef == -1){
+      l = mk<UN_MINUS>(var);
     } else if (coef < 0) {
       coef = -coef;
       l = mk<MULT>(mkMPZ(numerator(coef), e->getFactory()), var);
@@ -1680,12 +1682,10 @@ namespace ufo
   }
 
   // simplification based on boolean replacements
-  template<typename Range> static void constantPropagation(Range& hardVars, ExprSet& cnjs, ExprSet& elimSkol, bool doArithm = true)
+  template<typename Range> static void constantPropagation(Range& hardVars, ExprSet& cnjs, bool doArithm = true)
   {
     ExprMap repls;
     constantPropagationRec(hardVars, cnjs, repls, doArithm);
-    for (auto pair : repls)
-      elimSkol.insert(mk<EQ>(pair.first, pair.second));
   }
 
   // simplification based on equivalence classes
@@ -2887,7 +2887,7 @@ namespace ufo
   }
 
   // rewrite just equalities
-  template<typename Range> static Expr simpleQE(Expr exp, ExprSet& elimSkol, Range& quantified)
+  template<typename Range> static Expr simpleQE(Expr exp, Range& quantified)
   {
     ExprFactory& efac = exp->getFactory();
     ExprSet cnjsSet, dsjsSet;
@@ -2895,7 +2895,7 @@ namespace ufo
     if (dsjsSet.size() > 1)
     {
       ExprSet newDsjs;
-      for (auto & d : dsjsSet) newDsjs.insert(simpleQE(d, elimSkol, quantified));
+      for (auto & d : dsjsSet) newDsjs.insert(simpleQE(d, quantified));
       return disjoin(newDsjs, efac);
     }
     getConj(exp, cnjsSet);
@@ -2933,7 +2933,6 @@ namespace ufo
         if (var == normalized->left())
         {
           eqs.insert(normalized->right());
-          elimSkol.insert(*(cnjs.begin()+it));
           cnjs.erase (cnjs.begin()+it);
           continue;
         }
