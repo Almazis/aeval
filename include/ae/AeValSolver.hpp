@@ -12,7 +12,6 @@ namespace ufo
 {
 
   /** engine to solve validity of \forall-\exists formulas and synthesize Skolem relation */
-  
   class AeValSolver {
   private:
 
