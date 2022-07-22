@@ -21,7 +21,7 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
 
         if(debug)
             MBPSanityCheck(m, pr);
-    
+
         if(debug >= 2)
         {
 
@@ -146,7 +146,17 @@ void AeValSolver::lastSanityCheck()
     assert(u1.implies(sImpT, disjProj));
 }
 
-void ufo::aeSolveAndSkolemize(Expr s, Expr t, bool skol, int debug, bool opt, bool compact, bool split)
+/**
+ * Simple wrapper
+ */
+void ufo::aeSolveAndSkolemize(
+  Expr s,
+  Expr t,
+  bool skol,
+  int debug,
+  bool opt,
+  bool compact,
+  bool split)
 {
     ExprSet fa_qvars, ex_qvars;
     ExprFactory& efac = s->getFactory();

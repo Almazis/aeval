@@ -571,8 +571,10 @@ Expr ufo::mixQE(
                 sameTypeSet.insert(t);
             else if (yType == mk<INT_TY>(s->efac()) && (intVSreal == INTTYPE))
                 sameTypeSet.insert(t);
-            else if (intVSreal != NOTYPE)
-                return s; // no change can be made, return original expr.
+            else if (intVSreal != NOTYPE) {
+                // not supported
+                assert(false);
+            }
         }
         else
             outSet.insert(t);
