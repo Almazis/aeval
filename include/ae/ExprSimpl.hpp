@@ -1,6 +1,7 @@
 #ifndef EXPRSIMPL__HPP__
 #define EXPRSIMPL__HPP__
 #include <assert.h>
+#include <boost/rational.hpp>
 
 #include "ufo/Smt/EZ3.hh"
 
@@ -548,15 +549,29 @@ namespace ufo
     }
 
     // combine results
-
-    cpp_int coef = 0;
+    rational<cpp_int> coef(0, 1);
     for (auto it = lhs.begin(); it != lhs.end(); )
     {
       bool found = false;
       if (*it == var) { coef++; found = true; }
-      if (isOpX<UN_MINUS>(*it) && (*it)->left() == var) { coef--; found = true; }
+      if (isOpX<UN_MINUS>(*it)) {
+        Expr subExpr = (*it)->left();
+        if(subExpr == var) { coef--; found = true; }
+        else if (isOpX<MULT>(subExpr) && 2 == subExpr->arity() && isOpX<MPZ>(subExpr->left()) && subExpr->right() == var) {
+          coef -= lexical_cast<cpp_int>(subExpr->left());
+          found = true;
+        }
+        else if (isOp<IDIV>(subExpr) && 2 == subExpr->arity() && isOpX<MPZ>(subExpr->right()) && subExpr->left() == var) {
+          coef -= rational<cpp_int>(1, lexical_cast<cpp_int>(subExpr->right()));
+          found = true;
+        } 
+      }
       if (isOpX<MULT>(*it) && 2 == (*it)->arity() && isOpX<MPZ>((*it)->left()) && (*it)->right() == var) {
         coef += lexical_cast<cpp_int>((*it)->left());
+        found = true;
+      }
+      if (isOp<IDIV>(*it) && 2 == (*it)->arity() && isOpX<MPZ>((*it)->right()) && (*it)->left() == var) {
+        coef += rational<cpp_int>(1, lexical_cast<cpp_int>((*it)->right()));
         found = true;
       }
 
@@ -566,19 +581,29 @@ namespace ufo
 
     if (!lhs.empty())
     {
-//      errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
-//             << *conjoin (lhs, e->getFactory()) << "\n";
+      errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
+             << *conjoin (lhs, e->getFactory()) << "\n";
       return e;
     }
 
     r = mkplus(rhs, e->getFactory());
-
+  
     if (coef == 0){
       l = mkMPZ (0, e->getFactory());
     } else if (coef == 1){
       l = var;
+    } else if (coef == -1){
+      l = mk<UN_MINUS>(var);
+    } else if (coef < 0) {
+      coef = -coef;
+      l = mk<MULT>(mkMPZ(numerator(coef), e->getFactory()), var);
+      if (denominator(coef) != 1)
+        l = mk<IDIV>(l, mkMPZ(denominator(coef), e->getFactory()));
+      l = mk<UN_MINUS>(l);
     } else {
-      l = mk<MULT>(mkMPZ(coef, e->getFactory()), var);
+      l = mk<MULT>(mkMPZ(numerator(coef), e->getFactory()), var);
+      if (denominator(coef) != 1)
+        l = mk<IDIV>(l, mkMPZ(denominator(coef), e->getFactory()));      
     }
 
     return mk<T>(l,r);
@@ -731,7 +756,7 @@ namespace ufo
   /**
    * Move var v to LHS of each expression and simplify
    */
-  inline static Expr ineqSimplifier(Expr v, Expr exp, bool merge = false){
+  inline static Expr ineqSimplifier(Expr v, Expr exp, bool merge = false) {
     ExprSet substsMap;
     if (isOpX<AND>(exp)){
       ExprSet cnjs;
@@ -1657,12 +1682,10 @@ namespace ufo
   }
 
   // simplification based on boolean replacements
-  template<typename Range> static void constantPropagation(Range& hardVars, ExprSet& cnjs, ExprSet& elimSkol, bool doArithm = true)
+  template<typename Range> static void constantPropagation(Range& hardVars, ExprSet& cnjs, bool doArithm = true)
   {
     ExprMap repls;
     constantPropagationRec(hardVars, cnjs, repls, doArithm);
-    for (auto pair : repls)
-      elimSkol.insert(mk<EQ>(pair.first, pair.second));
   }
 
   // simplification based on equivalence classes
@@ -2864,7 +2887,7 @@ namespace ufo
   }
 
   // rewrite just equalities
-  template<typename Range> static Expr simpleQE(Expr exp, ExprSet& elimSkol, Range& quantified)
+  template<typename Range> static Expr simpleQE(Expr exp, Range& quantified)
   {
     ExprFactory& efac = exp->getFactory();
     ExprSet cnjsSet, dsjsSet;
@@ -2872,7 +2895,7 @@ namespace ufo
     if (dsjsSet.size() > 1)
     {
       ExprSet newDsjs;
-      for (auto & d : dsjsSet) newDsjs.insert(simpleQE(d, elimSkol, quantified));
+      for (auto & d : dsjsSet) newDsjs.insert(simpleQE(d, quantified));
       return disjoin(newDsjs, efac);
     }
     getConj(exp, cnjsSet);
@@ -2910,7 +2933,6 @@ namespace ufo
         if (var == normalized->left())
         {
           eqs.insert(normalized->right());
-          elimSkol.insert(*(cnjs.begin()+it));
           cnjs.erase (cnjs.begin()+it);
           continue;
         }

@@ -1039,7 +1039,14 @@ namespace ufo
           allAssms[a] = def;
         }
         Expr bigSkol = combineAssignments(allAssms, someEvals[*intersect.begin()]);
-
+        if (debug) {
+          boost::tribool impl = u.implies(mk<AND>(conjoin(skolUncond, efac), mk<AND>(s, projections[*intersect.begin()], bigSkol)), t);
+          if(boost::indeterminate(impl))
+            errs() << "Solver returned undefined" << endl;
+          if(!impl)
+            errs() << "Failed Sanity check [" << *intersect.begin() << "]" << endl;
+          assert(impl);
+        } 
         for (auto & evar : v)
         {
           Expr newSkol;
@@ -1059,7 +1066,19 @@ namespace ufo
               Expr def = getAssignmentForVar(a, skolemConstraints[a][i]);
               allAssms[a] = def;
             }
-            bigSkol = mk<ITE>(projections[i], combineAssignments(allAssms, someEvals[i]), bigSkol);
+            
+            Expr mbpSkol = combineAssignments(allAssms, someEvals[i]);
+            bigSkol = mk<ITE>(projections[i], mbpSkol, bigSkol);
+            if (debug) {
+              boost::tribool impl = u.implies(
+                mk<AND>(conjoin(skolUncond, efac), mk<AND>(s, projections[i], mbpSkol)), t);
+              if(boost::indeterminate(impl))
+                errs() << "Solver returned undefined" << endl;
+              if(!impl)
+                errs() << "Failed Sanity check [" << i << "]" << endl;
+              assert(impl);
+            } 
+
             if (compact) bigSkol = u.simplifyITE(bigSkol);
           }
         }

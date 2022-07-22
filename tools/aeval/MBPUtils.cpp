@@ -7,34 +7,30 @@ using namespace ufo;
 int intOrReal(Expr s)
 {
     ExprVector sVec;
-    int realCt = 0, intCt = 0;
+    bool realType = false, intType = false;
     filter(s, bind::IsNumber(), back_inserter(sVec));
     filter(s, bind::IsConst(), back_inserter(sVec));
-    for(auto ite : sVec)
-    {
-        if(isOpX<MPQ>(ite))
-            outs() << "real? " << *ite << endl;
+    for(auto ite : sVec) {
         if(bind::isIntConst(ite) || isOpX<MPZ>(ite))
-            ++intCt;
+            intType = true;
         else if(bind::isRealConst(ite) || isOpX<MPQ>(ite))
-            ++realCt;
+            realType = true;
         else
-            outs() << "Error identifying: " << *ite << " in intOrReal()."
-                   << endl;
+            assert(false); // Error identifying
     }
-    if(realCt == 0 && intCt > 0)
-        return 1;
-    else if(realCt > 0 && intCt == 0)
-        return -1;
-    else if(realCt == 0 && intCt == 0)
-        return 2;
-    outs() << "For s: " << s << "\n\tCurrent realCt = " << realCt
-           << "\n\tCurrent intCt = " << intCt << endl;
-    return 0; //mixture of int and real.
+
+    if (realType && intType)
+        return MIXTYPE;
+    else if (realType)
+        return REALTYPE;
+    else if (intType)
+        return INTTYPE;
+    else
+        return NOTYPE; // t == true
 }
 
 void laMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
-                     ZSolver<EZ3>::Model &m) 
+                    ZSolver<EZ3>::Model &m, Expr coef = NULL) 
 {
     if(upVec.empty() || loVec.empty())
         return;
@@ -65,37 +61,31 @@ void laMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
         }
     );
 
-//    outs() << "upVec: ";
-//    for(auto ite = upVec.begin(); ite != upVec.end(); ite++)
-//        outs() << *ite << " ";
-//    outs() << endl;
-    bool leqFlag = isOpX<GEQ>(loVec.back()) && isOpX<LEQ>(upVec.front());
+    // outs() << "upVec: ";
+    // for(auto ite = upVec.begin(); ite != upVec.end(); ite++)
+    //     outs() << *ite << " ";
+    // outs() << endl;
+    // outs() << "loVec: ";
+    // for(auto ite = loVec.begin(); ite != loVec.end(); ite++)
+    //     outs() << *ite << " ";
+    // outs() << endl;
 
-    Expr curBound = upVec.back()->right();
-    Expr nextBound;
-    upVec.pop_back();
-    while(!upVec.empty()) {
-        nextBound = upVec.back()->right();
-        outSet.insert(mk<LEQ>(nextBound, curBound));
-        upVec.pop_back();
-        curBound = nextBound;
-    }
+    Expr loBound = loVec.back();
+    Expr upBound = upVec.front();
 
-    nextBound = loVec.back()->right();
-    loVec.pop_back();
-    if(leqFlag)
-        outSet.insert(mk<LEQ>(nextBound, curBound));
+    if (coef != NULL) { // integers with multiplication case
+        outSet.insert(mk<LT>(
+                        mk<IDIV>(loBound->right(), coef),
+                        mk<IDIV>(upBound->right(), coef)));
+    } else if(isOpX<GEQ>(loBound) && isOpX<LEQ>(upBound))
+        outSet.insert(mk<LEQ>(loBound->right(), upBound->right()));
     else
-        outSet.insert(mk<LT>(nextBound, curBound));
-    curBound = nextBound;
+        outSet.insert(mk<LT>(loBound->right(), upBound->right()));
 
-    while(!loVec.empty()) {
-        nextBound = loVec.back()->right();
-        outSet.insert(mk<LEQ>(nextBound, curBound));
-        loVec.pop_back();
-        curBound = nextBound;
-    }
-
+    for (auto ite = upVec.begin() + 1; ite != upVec.end(); ite++)
+        outSet.insert(mk<LEQ>(upBound->right(), (*ite)->right()));
+    for (auto ite = loVec.begin(); ite != loVec.end() - 1; ite++)
+        outSet.insert(mk<LEQ>((*ite)->right(), loBound->right()));
 }
 
 // create forall & exists formulas
@@ -328,30 +318,26 @@ Expr realQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 
 /* INTEGER HELPER FUNCTION */
 static Expr divTransHelper(Expr t, Expr constVar)
-{ // only for GT & LEQ Expr
-    if(isOpX<GT>(t) || isOpX<LEQ>(t))
-    {
-        Expr lhs = t->left(), rhs = t->right(), y, coef,
-             one = mkTerm(mpz_class(1), t->getFactory());
-        if(contains(lhs->left(), constVar))
-            y = lhs->left(), coef = lhs->right();
-        else
-            y = lhs->right(), coef = lhs->left();
-        return mk(
-          t->op(), y, mk<MINUS>(mk<MULT>(mk<PLUS>(rhs, one), coef), one));
-    }
-    else
-    {
-        outs() << "Error, divTransInt(): " << *t << " is not GT nor LEQ."
-               << endl;
+{
+    // only for GT & LEQ Expr
+    if(!isOpX<GT>(t) && !isOpX<LEQ>(t)) {
+        outs() << "Error, divTransInt(): " << *t << " is not GT nor LEQ." << endl;
         return t;
     }
+    Expr lhs = t->left(), rhs = t->right();
+    Expr one = mkTerm(mpz_class(1), t->getFactory());
+    Expr y, coef;
+
+    if(contains(lhs->left(), constVar))
+        y = lhs->left(), coef = lhs->right();
+    else
+        assert(false);
+    return mk(t->op(), y, mk<MINUS>(mk<MULT>(mk<PLUS>(rhs, one), coef), one));
 }
 
 // For single integer Expr normalization, only capable of handling LT & GEQ Exprs
 Expr divMultTransInt(Expr t, Expr constVar)
 {
-    // outs() << "divMultTransInt begin: t " << t << endl;
     Expr lhs = t->left(), rhs = t->right();
     if(lhs->arity() == 2)
     {
@@ -467,47 +453,41 @@ Expr coefApply(Expr t, Expr constVar, int LCM)
     return (mk(t->op(), lhs, rhs));
 }
 
-ExprVector coefTrans(ExprVector sVec, Expr constVar)
+int coefTrans(ExprVector &sVec, Expr constVar)
 {
     ExprVector outVec;
     int LCM = 1;
-    vector<int> intVec;
+    set<int> multipliers;
     // Gather LCM
-    for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
-    {
+    for (auto ite = sVec.begin(); ite != sVec.end(); ite++) {
         // outs() << "\tite: " << *ite << endl;
         Expr lhs = (*ite)->left();
         if(isOp<MULT>(lhs))
         {
             if(isOpX<MPZ>(lhs->left()))
-                intVec.push_back(boost::lexical_cast<int>(*lhs->left()));
+                multipliers.insert(boost::lexical_cast<int>(*lhs->left()));
             else if(isOpX<MPZ>(lhs->right()))
-                intVec.push_back(boost::lexical_cast<int>(*lhs->right()));
+                multipliers.insert(boost::lexical_cast<int>(*lhs->right()));
             else
                 outs() << "Coef not found in " << *ite << endl;
         }
     }
-    for(auto i : intVec)
+    for(auto i : multipliers)
         LCM = findLCM(LCM, i);
     // Making all Coefs for y into LCM
     if(LCM > 1)
-        for(auto t : sVec)
-            outVec.push_back(coefApply(t, constVar, LCM));
-    else
-        for(auto t : sVec)
-            outVec.push_back(t);
-    // Append the coefficient at the end
-    outVec.push_back(mkTerm(mpz_class(LCM), (*sVec.begin())->getFactory()));
-    return outVec;
+        for (auto ite = sVec.begin(); ite !=sVec.end(); ite++)
+            *ite = coefApply(*ite, constVar, LCM);
+    return LCM;
 }
 
 Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
 {
+    Expr coefExpr = NULL;
     ExprSet outSet;
     ExprVector sVec, loVec, upVec;
     /* Transformation Stage */
-    for(auto t : sSet)
-    {
+    for (auto t : sSet) {
         Expr initEx = vecElemInitInt(t, constVar);
         if(initEx != NULL)
             sVec.push_back(initEx);
@@ -515,9 +495,9 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
             outSet.insert(t);
     }
     // Coefficient Transformation, and extract the coefficient.
-    sVec = coefTrans(sVec, constVar);
-    Expr coef = *(sVec.end() - 1);
-    sVec.pop_back();
+    int coef = coefTrans(sVec, constVar);
+    if (coef > 1)
+        coefExpr = mkTerm(mpz_class(coef), constVar->getFactory());
     // Collecting upper & lower bound
     for(auto ite = sVec.begin(); ite != sVec.end(); ite++) {
         if(isOpX<GT>(*ite))
@@ -525,10 +505,7 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
         else if(isOpX<LEQ>(*ite))
             upVec.push_back(*ite);
     }
-    laMergeBounds(loVec, upVec, outSet, m);
-
-    bool divFlag = boost::lexical_cast<int>(coef) > 1 ? true : false;
-    assert(!divFlag); // multiplication not supported yet
+    laMergeBounds(loVec, upVec, outSet, m, coefExpr);
 
     return conjoin(outSet, constVar->getFactory());
 }
@@ -557,13 +534,14 @@ Expr ufo::mixQE(
           replaceAll(s, constVar, mk<FALSE>(s->efac()))));
         if(debug)
         {
-            outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
-                   << endl; //outTest
             boost::tribool equiv = u.isEquiv(orig, output);
             if(boost::indeterminate(equiv))
                 errs() << "Solver returned undefined" << endl;
             assert(equiv);
             assert(not (contains(output, constVar)));
+            if (debug >= 2)
+                outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
+                       << endl; //outTest        
         }
         return output;
     }
@@ -588,20 +566,15 @@ Expr ufo::mixQE(
                 assert(0);
             }
             int intVSreal = intOrReal(t);
-            // outs() << bind::typeOf(t->right()) << "\nyType: " << yType << "\nintVSreal: " << intVSreal << endl; //outTest
-            if(yType == mk<REAL_TY>(s->efac()) && (intVSreal == -1))
+
+            if (yType == mk<REAL_TY>(s->efac()) && (intVSreal == REALTYPE))
                 sameTypeSet.insert(t);
-            else if(yType == mk<INT_TY>(s->efac()) && (intVSreal == 1))
+            else if (yType == mk<INT_TY>(s->efac()) && (intVSreal == INTTYPE))
                 sameTypeSet.insert(t);
-            else if(intVSreal != 2)
-            { // if intVSreal == 2, thus t == true, so do nothing in that case.
-                outs() << "Nothing eliminated\nyType: " << yType
-                       << "\nintVSreal: " << intVSreal << endl; //outTest
-                outs() << "contains var? " << contains(s, constVar)
-                       << endl; //outTest
-                outs() << "s: " << s << endl;
-                return s;
-            } //no change can be made, return original expr.
+            else if (intVSreal != NOTYPE) {
+                // not supported
+                assert(false);
+            }
         }
         else
             outSet.insert(t);
@@ -615,7 +588,7 @@ Expr ufo::mixQE(
       yType == mk<REAL_TY>(s->efac()) ? realQE(sameTypeSet, constVar, m)
                                       : intQE(sameTypeSet, constVar, m));
     output = conjoin(outSet, s->getFactory()); //prepare for Sanity Check
-    if(debug)
+    if(debug >= 2)
     {
         outs() << "Before mixQE: " << orig << "\nAfter mixQE: " << output
                 << endl; //outTest

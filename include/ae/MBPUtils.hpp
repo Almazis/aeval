@@ -9,6 +9,13 @@ namespace ufo {
               SMTUtils &u, int debug);
   Expr createQuantifiedFormulaRestr(Expr def, Expr a, bool forall = false);
   Expr createQuantifiedFormulaRestr (Expr def, ExprSet& vars, bool forall = false);
+
+  enum laType {
+    REALTYPE = 0,
+    INTTYPE,
+    MIXTYPE,
+    NOTYPE
+  };
 }
 
 #endif
