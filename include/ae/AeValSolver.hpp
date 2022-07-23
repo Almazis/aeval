@@ -1040,11 +1040,9 @@ namespace ufo
         Expr bigSkol = combineAssignments(allAssms, someEvals[*intersect.begin()]);
         if (debug) {
           boost::tribool impl = u.implies(mk<AND>(conjoin(skolUncond, efac), mk<AND>(s, projections[*intersect.begin()], bigSkol)), t);
-          if(boost::indeterminate(impl))
-            errs() << "Solver returned undefined" << endl;
           if(!impl)
             errs() << "Failed Sanity check [" << *intersect.begin() << "]" << endl;
-          assert(impl);
+          tribool_assert(impl);
         } 
         for (auto & evar : v)
         {
@@ -1071,11 +1069,9 @@ namespace ufo
             if (debug) {
               boost::tribool impl = u.implies(
                 mk<AND>(conjoin(skolUncond, efac), mk<AND>(s, projections[i], mbpSkol)), t);
-              if(boost::indeterminate(impl))
-                errs() << "Solver returned undefined" << endl;
               if(!impl)
                 errs() << "Failed Sanity check [" << i << "]" << endl;
-              assert(impl);
+              tribool_assert(impl);
             } 
 
             if (compact) bigSkol = u.simplifyITE(bigSkol);

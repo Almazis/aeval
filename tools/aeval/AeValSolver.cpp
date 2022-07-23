@@ -12,11 +12,9 @@ void AeValSolver::getMBPandSkolem(ZSolver<EZ3>::Model &m)
   ExprMap modelMap;
   for(auto &exp : v)
   {
-    ExprMap map;
     ExprSet lits;
     u.getTrueLiterals(pr, m, lits, true);
-
-    pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, map, m, u, debug));
+    pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, m, u, debug));
     if(m.eval(exp) != exp)
       modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
@@ -133,18 +131,10 @@ void AeValSolver::lastSanityCheck()
   args.push_back(mk<IMPL>(s, t));
   Expr sImpT = mknary<EXISTS>(args);
   Expr disjProj = mk<IMPL>(s, disjoin(projections, efac));
-  // outs() << "\nDisjunctions of projections: " << *disjProj << "\n";
-  // outs() << "exists v. s => t: " << sImpT << endl; //outTest
-  // u.print(disjProj);
-  // outs () << "\n\n";
-  // u.print(sImpT);
-  // outs () << "\n\n";
-  SMTUtils u1(t->getFactory());
-  // outs() << "'exists v. s => t' isEquiv to 'disjunctions of projections': ";
-  // outs () << bool(u1.implies(disjProj, sImpT));
-  // outs () << bool(u1.implies(sImpT, disjProj)) << "\n\n\n\n";
-  assert(u1.implies(disjProj, sImpT));
-  assert(u1.implies(sImpT, disjProj));
+  boost::tribool impl = u.implies(disjProj, sImpT);
+  tribool_assert(impl);
+  impl = u.implies(sImpT, disjProj);
+  tribool_assert(impl);
 }
 
 /**
@@ -243,9 +233,7 @@ void ufo::aeSolveAndSkolemize(
         {
           boost::tribool impl =
             u.implies(mk<AND>(s, conjoin(sepSkols, s->getFactory())), t_orig);
-          if(boost::indeterminate(impl))
-            errs() << "Solver returned undefined" << endl;
-          assert(impl);
+          tribool_assert(impl);
         }
       }
       else
@@ -255,9 +243,7 @@ void ufo::aeSolveAndSkolemize(
         if(debug)
         {
           boost::tribool impl = u.implies(mk<AND>(s, skol), t_orig);
-          if(boost::indeterminate(impl))
-            errs() << "Solver returned undefined" << endl;
-          assert(impl);
+          tribool_assert(impl);
         }
       }
     }
@@ -272,7 +258,5 @@ void AeValSolver::MBPSanityCheck(ZSolver<EZ3>::Model &m, Expr &pr)
     args.push_back(temp->last());
   args.push_back(t);
   boost::tribool impl = u.implies(pr, mknary<EXISTS>(args));
-  if(boost::indeterminate(impl))
-    errs() << "Solver returned undefined" << endl;
-  assert(impl);
+  tribool_assert(impl);
 }

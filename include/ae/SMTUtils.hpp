@@ -5,6 +5,11 @@
 #include "ae/ExprSimpl.hpp"
 #include "ufo/Smt/EZ3.hh"
 
+#define tribool_assert(trbool)                     \
+  if(boost::indeterminate(trbool))                 \
+    errs() << "Solver retutned undefined" << endl; \
+  assert(trbool)
+
 using namespace std;
 using namespace boost;
 namespace ufo
