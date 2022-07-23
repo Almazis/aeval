@@ -5,6 +5,9 @@
 
 using namespace ufo;
 
+/**
+ * intOrReal - checks expression type
+ */
 int intOrReal(Expr s)
 {
   ExprVector sVec;
@@ -22,7 +25,7 @@ int intOrReal(Expr s)
   }
 
   if(realType && intType)
-    return MIXTYPE;
+    return MIXTYPE; // a bad case
   else if(realType)
     return REALTYPE;
   else if(intType)
@@ -37,7 +40,7 @@ int intOrReal(Expr s)
  * @loVec: lower bounds (y >= l, y > l), changed within function
  * @upVec: upper bounds (y <= u, y < u), changed within function
  * @outSet: output, a set of inequalities, which do not not contain y
- * @m: Z3 model, passed as param for lambda function 
+ * @m: Z3 model, must passed as param for lambda function 
  * @coef: coefitient in front of y for LIA with multiplication constraints
  */
 void laMergeBounds(
@@ -51,10 +54,8 @@ void laMergeBounds(
     return;
 
   std::sort(loVec.begin(), loVec.end(), [&m](Expr a, Expr b) {
-    Expr ra = a->right();
-    Expr rb = b->right();
-    if(isOpX<TRUE>(m.eval(mk<EQ>(ra, rb))))
-    {
+    Expr ra = a->right(), rb = b->right();
+    if(isOpX<TRUE>(m.eval(mk<EQ>(ra, rb)))) {
       if(isOpX<GEQ>(b))
         return true;
       return false;
@@ -63,25 +64,14 @@ void laMergeBounds(
   });
 
   std::sort(upVec.begin(), upVec.end(), [&m](Expr a, Expr b) {
-    Expr ra = a->right();
-    Expr rb = b->right();
-    if(isOpX<TRUE>(m.eval(mk<EQ>(ra, rb))))
-    {
+    Expr ra = a->right(), rb = b->right();
+    if(isOpX<TRUE>(m.eval(mk<EQ>(ra, rb)))) {
       if(isOpX<LEQ>(b))
         return false;
       return true;
     }
     return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
   });
-
-  // outs() << "upVec: ";
-  // for(auto ite = upVec.begin(); ite != upVec.end(); ite++)
-  //     outs() << *ite << " ";
-  // outs() << endl;
-  // outs() << "loVec: ";
-  // for(auto ite = loVec.begin(); ite != loVec.end(); ite++)
-  //     outs() << *ite << " ";
-  // outs() << endl;
 
   Expr loBound = loVec.back();
   Expr upBound = upVec.front();
@@ -102,18 +92,20 @@ void laMergeBounds(
     outSet.insert(mk<LEQ>((*ite)->right(), loBound->right()));
 }
 
-//normalize comparison expression through dividing both side
-Expr multTrans(Expr t, Expr constVar)
+/**
+ * lraMultTrans - normalize inequality in LRA through dividing both sides
+ */
+Expr lraMultTrans(Expr t, Expr eVar)
 {
   Expr lhs = t->left(), rhs = t->right();
   while(isOp<MULT>(lhs)) //until lhs is no longer *
   {
     Expr lOperand = lhs->left(), rOperand = lhs->right();
-    bool yOnTheLeft = contains(lOperand, constVar);
+    bool yOnTheLeft = contains(lOperand, eVar);
 
     rhs = mk<DIV>(rhs, yOnTheLeft ? rOperand : lOperand);
     lhs = yOnTheLeft ? lOperand : rOperand;
-    if (!contains(lhs, constVar))
+    if (!contains(lhs, eVar))
       unreachable();
   }
   return (mk(t->op(), lhs, rhs));
@@ -131,7 +123,7 @@ Expr realQE(ExprSet sSet, Expr eVar, ZSolver<EZ3>::Model &m)
   for(auto t : sSet)
   {
     if(isOp<MULT>(t->left()))
-      t = multTrans(t, eVar);
+      t = lraMultTrans(t, eVar);
     sVec.push_back(t);
   }
   // Collecting upper & lower bound
@@ -149,87 +141,76 @@ Expr realQE(ExprSet sSet, Expr eVar, ZSolver<EZ3>::Model &m)
   return conjoin(outSet, eVar->getFactory());
 }
 
-/* INTEGER HELPER FUNCTION */
-static Expr divTransHelper(Expr t, Expr constVar)
+/**
+ * divTransHelper - eliminates division from lhs once 
+ */
+static Expr divTransHelper(Expr t, Expr eVar)
 {
-  // only for GT & LEQ Expr
   if(!isOpX<GT>(t) && !isOpX<LEQ>(t))
-  {
-    outs() << "Error, divTransInt(): " << *t << " is not GT nor LEQ." << endl;
-    return t;
-  }
+    unreachable();
+  
   Expr lhs = t->left(), rhs = t->right();
   Expr one = mkTerm(mpz_class(1), t->getFactory());
   Expr y, coef;
 
-  if(contains(lhs->left(), constVar))
+  if(contains(lhs->left(), eVar))
     y = lhs->left(), coef = lhs->right();
   else
     assert(false);
   return mk(t->op(), y, mk<MINUS>(mk<MULT>(mk<PLUS>(rhs, one), coef), one));
 }
 
-// For single integer Expr normalization, only capable of handling LT & GEQ Exprs
-Expr divMultTransInt(Expr t, Expr constVar)
+/**
+ * divMultTransInt - calculate coef recursively, eliminate division
+ */
+Expr divMultTransInt(Expr t, Expr eVar)
 {
   Expr lhs = t->left(), rhs = t->right();
   if (!isOp<MULT>(lhs) && !isOp<IDIV>(lhs))
     return t;
+  if (lhs->arity() != 2)
+    return t;
 
-  if(lhs->arity() == 2)
+  int coef = 1;
+  while(lhs->arity() != 1)
   {
-    int coef = 1;
-    while(true)
+    if(isOpX<MULT>(lhs))
     {
-      // outs() << "t during transformation: " << *t << endl;
-      if(lhs->arity() == 1)
-        break;
-      else if(isOpX<MULT>(lhs))
+      if(isOpX<MPZ>(lhs->left()))
       {
-        if(isOpX<MPZ>(lhs->left()))
-        {
-          coef *= boost::lexical_cast<int>(lhs->left());
-          t = mk(t->op(), lhs->right(), rhs);
-        }
-        else if(isOpX<MPZ>(lhs->right()))
-        {
-          coef *= boost::lexical_cast<int>(lhs->right());
-          t = mk(t->op(), lhs->left(), rhs);
-        }
-        else
-        {
-          outs() << "Error: " << *t
-                 << " contains coefficient that's not a integer constant!"
-                 << endl;
-          exit(0); //critical Error
-        }
+        coef *= boost::lexical_cast<int>(lhs->left());
+        t = mk(t->op(), lhs->right(), rhs);
       }
-      else if(isOpX<IDIV>(lhs))
+      else if(isOpX<MPZ>(lhs->right()))
       {
-        t = divTransHelper(t, constVar);
+        coef *= boost::lexical_cast<int>(lhs->right());
+        t = mk(t->op(), lhs->left(), rhs);
       }
       else
       {
-        outs() << "Error, divMultTransInt(): Unexpected operation (not "
-                  "idiv or "
-                  "mult)."
-               << endl;
-        break;
+        // contains coefficient that's not a integer constant
+        assert(false); //critical Error
       }
-      lhs = t->left(), rhs = t->right();
     }
-    // outs() << "divMultTransInt end: t " << mk(t->op(), lhs, rhs) << endl;
-    if(coef > 1)
-      return mk(
-        t->op(), mk<MULT>(mkTerm(mpz_class(coef), t->getFactory()), lhs), rhs);
+    else if(isOpX<IDIV>(lhs))
+      t = divTransHelper(t, eVar);
     else
-      return mk(t->op(), lhs, rhs);
+      notImplemented(); // Unexpected operation (not idiv or mult)
+
+    lhs = t->left(), rhs = t->right();
   }
+
+  if(coef > 1)
+    return mk(
+      t->op(), mk<MULT>(mkTerm(mpz_class(coef), t->getFactory()), lhs), rhs);
   else
-    return t;
+    return mk(t->op(), lhs, rhs);
 }
 
-static Expr vecElemInitInt(Expr t, Expr constVar)
+/**
+ * vecElemInitInt - removes LT and GEQ, gathers multipliers to one coef
+ */
+static Expr vecElemInitInt(Expr t, Expr eVar)
 {
   Expr lhs = t->left(), rhs = t->right();
 
@@ -240,13 +221,15 @@ static Expr vecElemInitInt(Expr t, Expr constVar)
   else if(isOpX<GEQ>(t))
     t = mk<GT>(lhs, mk<MINUS>(rhs, constOne));
 
-  t = divMultTransInt(t, constVar);
+  t = divMultTransInt(t, eVar);
 
   return t;
 }
 
-// Helper function for coefTrans
-Expr coefApply(Expr t, Expr constVar, int LCM)
+/**
+ * coefApply -  helper for coefTrans, equalizes coeficient with respect to LCM
+ */
+Expr coefApply(Expr t, Expr eVar, int LCM)
 {
   Expr lhs = t->left(), rhs = t->right();
   Expr newCoef = mkTerm(mpz_class(LCM), t->getFactory());
@@ -259,11 +242,18 @@ Expr coefApply(Expr t, Expr constVar, int LCM)
   }
   else
     rhs = mk<MULT>(newCoef, rhs);
-  lhs = mk<MULT>(newCoef, constVar);
+  lhs = mk<MULT>(newCoef, eVar);
   return (mk(t->op(), lhs, rhs));
 }
 
-int coefTrans(ExprVector &sVec, Expr constVar)
+/**
+ * coefTrans - handles multiplication, collects and equalizes coeficients
+ * 
+ * @sVec: input inequalities, not changed within function 
+ * @eVar: existentialy quantified variable to be eliminated 
+ * @return int: LCM of the coeficients
+ */
+int coefTrans(ExprVector &sVec, Expr eVar)
 {
   ExprVector outVec;
   int LCM = 1;
@@ -283,7 +273,7 @@ int coefTrans(ExprVector &sVec, Expr constVar)
 
   if(LCM > 1)
     for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
-      *ite = coefApply(*ite, constVar, LCM);
+      *ite = coefApply(*ite, eVar, LCM);
   return LCM;
 }
 
@@ -292,7 +282,7 @@ int coefTrans(ExprVector &sVec, Expr constVar)
  * @sSet: set of inequalities with eVar on lhs
  * @eVar: existentially quantified variable to be eliminated
  */
-Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
+Expr intQE(ExprSet sSet, Expr eVar, ZSolver<EZ3>::Model &m)
 {
   Expr coefExpr = NULL;
   ExprSet outSet;
@@ -300,13 +290,13 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
   /* Transformation Stage */
   for(auto t : sSet)
   {
-    Expr initEx = vecElemInitInt(t, constVar);
+    Expr initEx = vecElemInitInt(t, eVar);
     sVec.push_back(initEx);
   }
   // Coefficient Transformation, and extract the coefficient.
-  int coef = coefTrans(sVec, constVar);
+  int coef = coefTrans(sVec, eVar);
   if(coef > 1)
-    coefExpr = mkTerm(mpz_class(coef), constVar->getFactory());
+    coefExpr = mkTerm(mpz_class(coef), eVar->getFactory());
   // Collecting upper & lower bound
   for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
   {
@@ -317,7 +307,37 @@ Expr intQE(ExprSet sSet, Expr constVar, ZSolver<EZ3>::Model &m)
   }
   laMergeBounds(loVec, upVec, outSet, m, coefExpr);
 
-  return conjoin(outSet, constVar->getFactory());
+  return conjoin(outSet, eVar->getFactory());
+}
+
+/**
+ * ineqPrepare - helper for mixQE, rewrites ineq and checks type consistency  
+ */
+Expr ineqPrepare(Expr t, Expr eVar)
+{
+  if(isOpX<NEG>(t) && isOp<ComparissonOp>(t->left()))
+    t = mkNeg(t->left());
+  if(isOp<ComparissonOp>(t))
+  {
+    // rewrite so that y is on lhs, with positive coef
+    t = simplifyArithm(reBuildCmp(
+      t,
+      mk<PLUS>(t->arg(0), additiveInverse(t->arg(1))),
+      mkMPZ(0, eVar->efac())));
+    t = ineqSimplifier(eVar, t);
+  }
+  else
+    unreachable();
+  int intVSreal = intOrReal(t);
+
+  if(isReal(eVar) && (intVSreal == REALTYPE))
+    return t;
+  else if(isInt(eVar) && (intVSreal == INTTYPE))
+    return t;
+  else if(intVSreal != NOTYPE)
+    notImplemented();
+  
+  return t;
 }
 
 Expr ufo::mixQE(
@@ -331,56 +351,32 @@ Expr ufo::mixQE(
   ExprSet outSet, temp, sameTypeSet;
   if(eVar == NULL)
     return s; // nothing to eliminate
-  Expr yType = bind::typeOf(eVar);
 
   // Boolean case.
-  if(yType == mk<BOOL_TY>(s->efac()))
-  {
+  if(isBoolean(eVar)) {
     output = simplifyBool(mk<OR>(
       replaceAll(s, eVar, mk<TRUE>(s->efac())),
       replaceAll(s, eVar, mk<FALSE>(s->efac()))));
     return output;
   }
-  // gather conjuncts that's the same type with y into sameTypeSet.
+
   getConj(s, temp);
   for(auto t : temp)
   {
     if (t == NULL)
       continue;
-
     if(!contains(t, eVar)) {
       outSet.insert(t);
       continue;
     }
-
-    if(isOpX<NEG>(t) && isOp<ComparissonOp>(t->left()))
-      t = mkNeg(t->left());
-    if(isOp<ComparissonOp>(t))
-    {
-      t = simplifyArithm(reBuildCmp(
-        t,
-        mk<PLUS>(t->arg(0), additiveInverse(t->arg(1))),
-        mkMPZ(0, s->efac())));
-      t = ineqSimplifier(eVar, t);
-    }
-    else
-      unreachable();
-    int intVSreal = intOrReal(t);
-
-    if(yType == mk<REAL_TY>(s->efac()) && (intVSreal == REALTYPE))
-      sameTypeSet.insert(t);
-    else if(yType == mk<INT_TY>(s->efac()) && (intVSreal == INTTYPE))
-      sameTypeSet.insert(t);
-    else if(intVSreal != NOTYPE)
-      notImplemented();
+    // rewrite and check type
+    t = ineqPrepare(t, eVar);
+    sameTypeSet.insert(t);
   }
 
-  if(sameTypeSet.empty()) // nothing to eliminate
-    return conjoin(outSet, s->efac());
+  if(sameTypeSet.empty())
+    outSet.insert(isReal(eVar) ? realQE(sameTypeSet, eVar, m)
+                               : intQE(sameTypeSet, eVar, m));
 
-  outSet.insert(
-    yType == mk<REAL_TY>(s->efac()) ? realQE(sameTypeSet, eVar, m)
-                                    : intQE(sameTypeSet, eVar, m));
-  output = conjoin(outSet, s->getFactory());
-  return output;
+  return conjoin(outSet, eVar->getFactory());
 }

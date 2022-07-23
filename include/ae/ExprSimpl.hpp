@@ -266,6 +266,13 @@ namespace ufo
     return isOpX<REAL_TY>(t);
   }
 
+  inline static bool isInt(Expr a)
+  {
+    Expr t = typeOf(a);
+    if (t == NULL) return false;
+    return isOpX<INT_TY>(t);    
+  }
+
   inline static bool isArray(Expr a)
   {
     Expr t = typeOf(a);
