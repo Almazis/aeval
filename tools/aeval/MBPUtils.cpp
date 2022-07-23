@@ -374,7 +374,7 @@ Expr ufo::mixQE(
     sameTypeSet.insert(t);
   }
 
-  if(sameTypeSet.empty())
+  if(!sameTypeSet.empty())
     outSet.insert(isReal(eVar) ? realQE(sameTypeSet, eVar, m)
                                : intQE(sameTypeSet, eVar, m));
 
