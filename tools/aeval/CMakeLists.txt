@@ -1,6 +1,5 @@
-add_executable (aeval MBPUtils.cpp AeValSolver.cpp Ae.cpp)
-add_library(aevalSolver AeValSolver.cpp MBPUtils.cpp)
-target_link_libraries (aeval ${Z3_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GMPXX_LIB} ${GMP_LIB})
+add_executable (aeval Ae.cpp)
+target_link_libraries (aeval aevalSolver ${Z3_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GMPXX_LIB} ${GMP_LIB})
 #if (BISON_FOUND)
   add_dependencies(aeval SyGuSParserBison)
 #endif()

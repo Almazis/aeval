@@ -1,7 +1,8 @@
 #ifndef MBPUTILS__HPP__
 #define MBPUTILS__HPP__
 
-#include "ae/AeValSolver.hpp"
+#include "ae/SMTUtils.hpp"
+#include "ufo/Smt/EZ3.hh"
 
 namespace ufo {
   Expr mixQE(Expr s, Expr eVar, ZSolver<EZ3>::Model &m, SMTUtils &u, int debug);
