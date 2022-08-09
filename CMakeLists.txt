@@ -169,3 +169,4 @@ include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR}/src)
 
 add_subdirectory(src)
 add_subdirectory(tools)
+add_subdirectory(tests)
