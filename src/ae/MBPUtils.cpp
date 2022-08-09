@@ -6,7 +6,7 @@ using namespace ufo;
 /**
  * intOrReal - checks expression type
  */
-int intOrReal(Expr s)
+int ufo::intOrReal(Expr s)
 {
   ExprVector sVec;
   bool realType = false, intType = false;

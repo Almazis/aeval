@@ -13,6 +13,8 @@ namespace ufo {
     MIXTYPE,
     NOTYPE
   };
+
+  int intOrReal(Expr s);
 }
 
 #endif

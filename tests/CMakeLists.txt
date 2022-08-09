@@ -11,7 +11,7 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(unitTests
   test.cpp
 )
-target_link_libraries(unitTests Catch2::Catch2)
+target_link_libraries(unitTests Catch2::Catch2 aevalSolver ${Z3_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${GMPXX_LIB} ${GMP_LIB})
 
 include(CTest)
 include(Catch)
