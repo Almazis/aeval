@@ -86,3 +86,24 @@ Expr rewriteRem(Expr exp) {
     Expr r = mk<BMUL>(mk<BUDIV>(lhs, rhs), rhs);
     return mk<BSUB>(lhs, r);
 }
+
+// normalization rules
+
+// t(x) + y <= z -> t(x) <= z-y && y <= z
+Expr add1(Expr xPart, Expr yPart, Expr zPart) 
+{
+    Expr l = mk<BULE>(xPart, mk<BSUB>(zPart, yPart));
+    Expr r = mk<BULE>(yPart, zPart);
+    return mk<AND>(l, r);
+}
+
+// t(x) + y <= z -> t(x) <= z-y && -y <= t(x)
+Expr add2(Expr xPart, Expr yPart, Expr zPart) 
+{
+    ExprFactory& efac = xPart->getFactory();
+    unsigned size = getSize(yPart);
+    Expr bvZero = bvConstFromNumber(0, size, efac);
+    Expr l = mk<BULE>(xPart, mk<BSUB>(zPart, yPart));
+    Expr r = mk<BULE>(mk<BSUB>(bvZero, yPart), zPart);
+    return mk<AND>(l, r);
+}
