@@ -111,22 +111,29 @@ namespace expr
     NOP(BNOR,"bvnor",FUNCTIONAL,BvOp)
     NOP(BXNOR,"bvxnor",FUNCTIONAL,BvOp)
     NOP(BNEG,"bvneg",FUNCTIONAL,BvOp)
-    NOP(BADD,"bvadd",FUNCTIONAL,BvOp)
-    NOP(BSUB,"bvsub",FUNCTIONAL,BvOp)
-    NOP(BMUL,"bvmul",FUNCTIONAL,BvOp)
-    NOP(BUDIV,"bvudiv",FUNCTIONAL,BvOp)
-    NOP(BSDIV,"bvsdiv",FUNCTIONAL,BvOp)
-    NOP(BUREM,"bvurem",FUNCTIONAL,BvOp)
-    NOP(BSREM,"bvsrem",FUNCTIONAL,BvOp)
-    NOP(BSMOD,"bvsmod",FUNCTIONAL,BvOp)
-    NOP(BULT,"bvult",FUNCTIONAL,BvOp)
-    NOP(BSLT,"bvslt",FUNCTIONAL,BvOp)
-    NOP(BULE,"bvule",FUNCTIONAL,BvOp)
-    NOP(BSLE,"bvsle",FUNCTIONAL,BvOp)
-    NOP(BUGE,"bvuge",FUNCTIONAL,BvOp)
-    NOP(BSGE,"bvsge",FUNCTIONAL,BvOp)
-    NOP(BUGT,"bvugt",FUNCTIONAL,BvOp)
-    NOP(BSGT,"bvsgt",FUNCTIONAL,BvOp)
+    
+    NOP_BASE(BvArithOp)
+    NOP(BADD,"bvadd",FUNCTIONAL,BvArithOp)
+    NOP(BSUB,"bvsub",FUNCTIONAL,BvArithOp)
+    NOP(BMUL,"bvmul",FUNCTIONAL,BvArithOp)
+    NOP(BUDIV,"bvudiv",FUNCTIONAL,BvArithOp)
+    NOP(BSDIV,"bvsdiv",FUNCTIONAL,BvArithOp)
+    NOP(BUREM,"bvurem",FUNCTIONAL,BvArithOp)
+    NOP(BSREM,"bvsrem",FUNCTIONAL,BvArithOp)
+    NOP(BSMOD,"bvsmod",FUNCTIONAL,BvArithOp)
+
+    NOP_BASE(BvUCmp)
+    NOP(BULT,"bvult",FUNCTIONAL,BvUCmp)
+    NOP(BULE,"bvule",FUNCTIONAL,BvUCmp)
+    NOP(BUGE,"bvuge",FUNCTIONAL,BvUCmp)
+    NOP(BUGT,"bvugt",FUNCTIONAL,BvUCmp)
+    
+    NOP_BASE(BvSCmp)
+    NOP(BSLT,"bvslt",FUNCTIONAL,BvSCmp)
+    NOP(BSLE,"bvsle",FUNCTIONAL,BvSCmp)
+    NOP(BSGE,"bvsge",FUNCTIONAL,BvSCmp)
+    NOP(BSGT,"bvsgt",FUNCTIONAL,BvSCmp)
+
     NOP(BCONCAT,"concat",FUNCTIONAL,BvOp)
     NOP(BEXTRACT,"extract",FUNCTIONAL,BvOp)
     NOP(BSEXT,"bvsext",FUNCTIONAL,BvOp)
@@ -145,6 +152,9 @@ namespace expr
     namespace bv
     {
       /* XXX Add helper methods as needed */
+      inline bool isBvCmp (Expr v) {
+        return isOp<BvSCmp>(v) || isOp<BvUCmp>(v);
+      }
 
       inline Expr bvnot (Expr v) {return mk<BNOT> (v);}
       
