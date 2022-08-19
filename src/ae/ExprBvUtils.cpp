@@ -1,5 +1,5 @@
-#include "ae/ExprSimpl.hpp"
 #include "common.h"
+#include "ae/ExprBvUtils.hpp"
 
 using namespace ufo;
 using namespace boost::multiprecision;
@@ -40,7 +40,7 @@ unsigned getSize(Expr exp) {
 static inline Expr bvConstFromNumber(int val, unsigned size, ExprFactory& efac)
 {
     return bv::bvConst(mkTerm (mpz_class(val), efac), size);
-} 
+}
 
 Expr rewriteSCmp(Expr exp) {
     unsigned size = getSize(exp);
@@ -89,7 +89,7 @@ Expr rewriteRem(Expr exp) {
 
 // normalization rules
 
-// t(x) + y <= z -> t(x) <= z-y && y <= z
+// t(x) + y <= z ---> t(x) <= z-y && y <= z
 Expr add1(Expr xPart, Expr yPart, Expr zPart) 
 {
     Expr l = mk<BULE>(xPart, mk<BSUB>(zPart, yPart));
@@ -97,7 +97,7 @@ Expr add1(Expr xPart, Expr yPart, Expr zPart)
     return mk<AND>(l, r);
 }
 
-// t(x) + y <= z -> t(x) <= z-y && -y <= t(x)
+// t(x) + y <= z ---> t(x) <= z-y && -y <= t(x)
 Expr add2(Expr xPart, Expr yPart, Expr zPart) 
 {
     ExprFactory& efac = xPart->getFactory();
