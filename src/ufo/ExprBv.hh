@@ -17,23 +17,24 @@ namespace expr
         BvSort (unsigned width) : m_width (width) {}
         BvSort (const BvSort &o) : m_width (o.m_width) {}
         
- 	bool operator< (const BvSort &b) const { return m_width < b.m_width; }
-	bool operator== (const BvSort &b) const { return m_width == b.m_width; }
-	bool operator!= (const BvSort &b) const { return m_width != b.m_width; }
+        bool operator< (const BvSort &b) const { return m_width < b.m_width; }
+        bool operator== (const BvSort &b) const { return m_width == b.m_width; }
+        bool operator!= (const BvSort &b) const { return m_width != b.m_width; }
 	
-	size_t hash () const
-	{
-	  std::hash<unsigned> hasher;
-	  return hasher (m_width);
-	}
-	
-	void Print (std::ostream &OS) const { OS << "bv(" << m_width << ")"; }	
+        size_t hash () const
+        {
+          std::hash<unsigned> hasher;
+          return hasher (m_width);
+        }
+        
+        void Print (std::ostream &OS) const { OS << "bv(" << m_width << ")"; }	
       };
+
       inline std::ostream &operator<< (std::ostream &OS, const BvSort &b)
       {
-	b.Print (OS);
-	return OS;
-      }       
+        b.Print (OS);
+        return OS;
+      }
     }
   }
   
@@ -84,6 +85,12 @@ namespace expr
           isOpX<MPZ> (v->arg (0)) && isOpX<BVSORT> (v->arg (1));
       }
 
+      inline bool is_bvvar (Expr v)
+      {
+        return isOpX<BIND> (v) && v->arity () == 2 &&
+          !isOpX<MPZ> (v->arg (0)) && isOpX<BVSORT> (v->arg (1));
+      }
+
       inline mpz_class toMpz (Expr v)
       {
         assert (is_bvnum (v));
@@ -100,17 +107,7 @@ namespace expr
       
     }
     
-    NOP_BASE(BvOp)
-    NOP(BNOT,"bvnot",FUNCTIONAL,BvOp)
-    NOP(BREDAND,"bvredand",FUNCTIONAL,BvOp)
-    NOP(BREDOR,"bvredor",FUNCTIONAL,BvOp)
-    NOP(BAND,"bvand",FUNCTIONAL,BvOp)
-    NOP(BOR,"bvor",FUNCTIONAL,BvOp)
-    NOP(BXOR,"bvxor",FUNCTIONAL,BvOp)
-    NOP(BNAND,"bvnand",FUNCTIONAL,BvOp)
-    NOP(BNOR,"bvnor",FUNCTIONAL,BvOp)
-    NOP(BXNOR,"bvxnor",FUNCTIONAL,BvOp)
-    NOP(BNEG,"bvneg",FUNCTIONAL,BvOp)
+
     
     NOP_BASE(BvArithOp)
     NOP(BADD,"bvadd",FUNCTIONAL,BvArithOp)
@@ -134,6 +131,17 @@ namespace expr
     NOP(BSGE,"bvsge",FUNCTIONAL,BvSCmp)
     NOP(BSGT,"bvsgt",FUNCTIONAL,BvSCmp)
 
+    NOP_BASE(BvOp)
+    NOP(BNOT,"bvnot",FUNCTIONAL,BvOp)
+    NOP(BREDAND,"bvredand",FUNCTIONAL,BvOp)
+    NOP(BREDOR,"bvredor",FUNCTIONAL,BvOp)
+    NOP(BAND,"bvand",FUNCTIONAL,BvOp)
+    NOP(BOR,"bvor",FUNCTIONAL,BvOp)
+    NOP(BXOR,"bvxor",FUNCTIONAL,BvOp)
+    NOP(BNAND,"bvnand",FUNCTIONAL,BvOp)
+    NOP(BNOR,"bvnor",FUNCTIONAL,BvOp)
+    NOP(BXNOR,"bvxnor",FUNCTIONAL,BvOp)
+    NOP(BNEG,"bvneg",FUNCTIONAL,BvOp)
     NOP(BCONCAT,"concat",FUNCTIONAL,BvOp)
     NOP(BEXTRACT,"extract",FUNCTIONAL,BvOp)
     NOP(BSEXT,"bvsext",FUNCTIONAL,BvOp)

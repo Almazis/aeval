@@ -2332,6 +2332,8 @@ namespace expr
         if (isOpX<STORE>(v)) return sort::arrayTy(typeOf(v->right()), typeOf(v->last()));
         if (isOpX<SELECT>(v)) return typeOf(v->left())->last();
         if (isOpX<CONST_ARRAY>(v)) return sort::arrayTy(v->left(), typeOf(v->right()));
+
+        // if(isOp<BvArithOp>(v) || isOp<BvOp>(v)) return typeOf(v->left());
         
 //      std::cerr << "WARNING: could not infer type of: " << *v << "\n";
 //      assert (0 && "Unreachable");

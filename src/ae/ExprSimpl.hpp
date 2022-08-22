@@ -4,6 +4,8 @@
 #include <boost/rational.hpp>
 
 #include "ufo/Smt/EZ3.hh"
+#include "ae/ExprBvUtils.hpp"
+#include "ufo/ExprBv.hh"
 
 using namespace std;
 using namespace expr::op::bind;
@@ -250,6 +252,12 @@ namespace ufo
     Expr t = typeOf(a);
     if (t == NULL) return false;
     return isOpX<BOOL_TY>(t);
+  }
+
+  inline static bool isBv(Expr a) {
+    Expr t = typeOf(a);
+    if (t == NULL) return false;
+    return isOpX<BVSORT>(t);
   }
 
   inline static bool isNumeric(Expr a)
@@ -937,6 +945,10 @@ namespace ufo
     else if (isOp<ComparissonOp>(fla))
     {
       return reBuildNegCmp(fla, fla->arg(0), fla->arg(1));
+    }
+    else if (bv::isBvCmp(fla))
+    {
+      return reBuildBvNegCmp(fla, fla->arg(0), fla->arg(1));
     }
     else if (isOpX<IMPL>(fla))
     {
@@ -4619,10 +4631,11 @@ namespace ufo
       getLiterals(mk<BUGT>(el, er), lits, splitEqs);
       getLiterals(mk<BULT>(el, er), lits, splitEqs);
     } else if (isOp<BvSCmp>(exp)) {
-      exp = 
-      // rewrite signed cmp to unsigned
+      exp = rewriteSignedCmp(exp);
+      getLiterals(exp, lits, splitEqs);
     } else if (isOp<BvUCmp>(exp)) {
       // rewrite div and rem
+      lits.insert(exp);
     }
   }
 
@@ -4635,6 +4648,8 @@ namespace ufo
       getLiteralsBool(exp, lits, splitEqs);
     else if (isOp<ComparissonOp>(exp) && isNumeric(el))
       getLiteralsNumeric(exp, lits, splitEqs);
+    else if (isOp<ComparissonOp>(exp) && isBv(el) || bv::isBvCmp(exp))
+      getLiteralsBv(exp, lits, splitEqs);
     else if (bind::typeOf(exp) == mk<BOOL_TY>(efac) &&
         !containsOp<AND>(exp) && !containsOp<OR>(exp)) {
       lits.insert(exp);
