@@ -25,3 +25,14 @@ TEST_CASE("Mine size of bv const", "[Bv]") {
         REQUIRE(getBvSize(bvec) == size);
     }
 }
+
+TEST_CASE("Mine size of bv arith", "[Bv]") {
+    ExprFactory efac;
+    for(unsigned size = 1; size <= 64; size++) {
+        Expr bvec1 = bv::bvnum(mpz_class(1), size, efac);
+        Expr bvec2 = bv::bvnum(mpz_class(1), size, efac);
+        Expr bop = mk<BADD>(bvec1, bvec2);
+        REQUIRE(isBv(bop));
+        REQUIRE(getBvSize(bop) == size);
+    }
+}
