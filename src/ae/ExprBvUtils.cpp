@@ -155,5 +155,6 @@ Expr add2(Expr xPart, Expr yPart, Expr zPart)
     Expr bvZero = bvConstFromNumber(0, size, efac);
     Expr l = mk<BULE>(xPart, mk<BSUB>(zPart, yPart));
     Expr r = mk<BULE>(mk<BSUB>(bvZero, yPart), zPart);
+    outs() << "\n";
     return mk<AND>(l, r);
 }

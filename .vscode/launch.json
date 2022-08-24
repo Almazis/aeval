@@ -1,0 +1,19 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "bvTest1",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tools/sygus/sygussolver",
+            "args": ["debug", "5", "${workspaceFolder}/bench/bv-conditional-inverses/find_inv_bvsge_bvmul_4bit.sl"],
+            "environment": [{ "name": "config", "value": "Debug" }],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake: build",
+          }
+          
+    ]
+}
