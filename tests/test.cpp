@@ -6,6 +6,7 @@
 #include "ae/ExprSimpl.hpp"
 
 using namespace ufo;
+using namespace bv;
 
 TEST_CASE( "Get constants types", "[MBPUtils]") {
     ExprFactory efac;

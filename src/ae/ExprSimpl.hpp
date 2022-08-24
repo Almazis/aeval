@@ -4648,7 +4648,7 @@ namespace ufo
       getLiteralsBool(exp, lits, splitEqs);
     else if (isOp<ComparissonOp>(exp) && isNumeric(el))
       getLiteralsNumeric(exp, lits, splitEqs);
-    else if (isOp<ComparissonOp>(exp) && isBv(el) || bv::isBvCmp(exp))
+    else if (isOp<ComparissonOp>(exp) && isBv(el) || bv::isBvCmp(exp)) // TODO: divisibility constrants
       getLiteralsBv(exp, lits, splitEqs);
     else if (bind::typeOf(exp) == mk<BOOL_TY>(efac) &&
         !containsOp<AND>(exp) && !containsOp<OR>(exp)) {

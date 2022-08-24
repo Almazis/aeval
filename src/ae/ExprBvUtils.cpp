@@ -8,6 +8,16 @@ using namespace boost::multiprecision;
 
 typedef std::set<unsigned> uintSet;
 
+void ufo::getSignedCmps (Expr a, ExprVector &scmps)
+{
+    if (isOp<BvSCmp>(a)){
+        scmps.push_back(a);
+    } else {
+        for (unsigned i = 0; i < a->arity(); i++)
+            getSignedCmps(a->arg(i), scmps);
+    }
+}
+
 static void mineBvSizes(Expr exp, uintSet& sizes) {
     if (bv::is_bvnum(exp) || bv::is_bvvar(exp)) {
         sizes.insert(bv::width(exp->right()));
@@ -21,6 +31,9 @@ static void mineBvSizes(Expr exp, uintSet& sizes) {
         for (int i = 0; i < exp->arity(); i++)
             mineBvSizes(exp->arg(i), sizes);
     } else {
+        // outs() << exp << endl;
+        // outs() << exp->right() << endl;
+        // outs() << exp->left() << endl;
         notImplemented();
     }
 }

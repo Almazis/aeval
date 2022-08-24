@@ -526,6 +526,17 @@ namespace ufo
 
     void getTrueLiterals(Expr ex, ZSolver<EZ3>::Model &m, ExprSet& lits, bool splitEqs = true)
     {
+      // eliminate signed cmps to ites
+      ExprVector scmps;
+      getSignedCmps(ex, scmps);
+      if (!scmps.empty()) {
+        for (auto it = scmps.begin(); it != scmps.end();) {
+          Expr iteExpr = rewriteSignedCmp(*it);
+          ex = replaceAll(ex, *it, iteExpr);
+          it = scmps.erase(it);
+        }
+      }
+
       ExprVector ites;
       getITEs(ex, ites);
       if (ites.empty())
