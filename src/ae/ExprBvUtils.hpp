@@ -11,6 +11,11 @@ namespace ufo
 //  Expr rewriteDivisible(Expr exp);
 //  Expr rewriteRem(Expr exp);
   Expr reBuildBvNegCmp(Expr fla, Expr lhs, Expr rhs);
+
+  Expr bvAdditiveInverse(Expr e);
+  void getBaddTerm (Expr a, ExprVector &terms);
+  Expr bvReBuildCmp(Expr exp, Expr lhs, Expr rhs);
+  bool isBmulVar(Expr e, Expr var);
 }
 #endif
 

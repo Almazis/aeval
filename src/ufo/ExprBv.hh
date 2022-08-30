@@ -85,10 +85,12 @@ namespace expr
           isOpX<MPZ> (v->arg (0)) && isOpX<BVSORT> (v->arg (1));
       }
 
-      inline bool is_bvvar (Expr v)
+      /// true if v is a bit-vector variable
+      inline bool is_bvconst (Expr v)
       {
-        return isOpX<BIND> (v) && v->arity () == 2 &&
-          !isOpX<MPZ> (v->arg (0)) && isOpX<BVSORT> (v->arg (1));
+        return isOpX<FAPP> (v) &&
+        isOpX<FDECL> (v->first()) && v->first()->arity () == 2 &&
+        isOpX<BVSORT> (v->first()->arg (1));
       }
 
       inline mpz_class toMpz (Expr v)
@@ -110,6 +112,7 @@ namespace expr
 
     
     NOP_BASE(BvArithOp)
+    NOP(BNEG,"bvneg",FUNCTIONAL,BvArithOp) // unary minus
     NOP(BADD,"bvadd",FUNCTIONAL,BvArithOp)
     NOP(BSUB,"bvsub",FUNCTIONAL,BvArithOp)
     NOP(BMUL,"bvmul",FUNCTIONAL,BvArithOp)
@@ -141,7 +144,6 @@ namespace expr
     NOP(BNAND,"bvnand",FUNCTIONAL,BvOp)
     NOP(BNOR,"bvnor",FUNCTIONAL,BvOp)
     NOP(BXNOR,"bvxnor",FUNCTIONAL,BvOp)
-    NOP(BNEG,"bvneg",FUNCTIONAL,BvOp)
     NOP(BCONCAT,"concat",FUNCTIONAL,BvOp)
     NOP(BEXTRACT,"extract",FUNCTIONAL,BvOp)
     NOP(BSEXT,"bvsext",FUNCTIONAL,BvOp)

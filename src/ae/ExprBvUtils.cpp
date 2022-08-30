@@ -18,10 +18,11 @@ void ufo::getSignedCmps (Expr a, ExprVector &scmps)
     }
 }
 
-static void mineBvSizes(Expr exp, uintSet& sizes) {
-    if (bv::is_bvnum(exp) || bv::is_bvvar(exp)) {
+static void mineBvSizes(Expr exp, uintSet& sizes) 
+{
+    if (bv::is_bvnum(exp) || bv::is_bvconst(exp)) {
         sizes.insert(bv::width(exp->right()));
-    } else if (isOp<BvArithOp>(exp) || isOp<BvOp>(exp)){
+    } else if (isOp<BvArithOp>(exp) || isOp<BvOp>(exp)) {
         for (int i = 0; i < exp->arity(); i++)
             mineBvSizes(exp->arg(i), sizes);
     } else if (bv::isBvCmp(exp)) {
@@ -31,14 +32,12 @@ static void mineBvSizes(Expr exp, uintSet& sizes) {
         for (int i = 0; i < exp->arity(); i++)
             mineBvSizes(exp->arg(i), sizes);
     } else {
-        // outs() << exp << endl;
-        // outs() << exp->right() << endl;
-        // outs() << exp->left() << endl;
         notImplemented();
     }
 }
 
-unsigned ufo::getBvSize(Expr exp) {
+unsigned ufo::getBvSize(Expr exp) 
+{
     uintSet sizes;
     mineBvSizes(exp, sizes);
     if (sizes.size() > 1) {
@@ -58,23 +57,15 @@ static inline Expr bvConstFromNumber(int val, unsigned size, ExprFactory& efac)
 
 Expr ufo::reBuildBvNegCmp(Expr fla, Expr lhs, Expr rhs)
 {
+    // signed cmps must be eliminated beforehand
     if (isOpX<BULE>(fla))
         return mk<BUGT>(lhs, rhs);
     else if (isOpX<BUGE>(fla))
         return mk<BULT>(lhs, rhs);
     else if (isOpX<BULT>(fla))
         return mk<BUGE>(lhs, rhs);
-    else if (isOpX<BUGT>(fla))
-        return mk<BULE>(lhs, rhs);
-    
-    else if (isOpX<BSLE>(fla))
-        return mk<BSGT>(lhs, rhs);
-    else if (isOpX<BSGE>(fla))
-        return mk<BSLT>(lhs, rhs);
-    else if (isOpX<BSLT>(fla))
-        return mk<BSGE>(lhs, rhs);
-    assert(isOpX<BSGT>(fla));
-    return mk<BSLE>(lhs, rhs);
+    assert(isOpX<BUGT>(fla));
+    return mk<BULE>(lhs, rhs);
 }
 
 template <typename T> Expr rewriteSignedHelper(Expr exp)
@@ -115,7 +106,22 @@ Expr ufo::rewriteSignedCmp(Expr exp)
     }
 }
 
-Expr rewriteDivisible(Expr exp) {
+bool isBvArith(Expr exp)
+{
+    if (bv::is_bvnum(exp) || bv::is_bvconst(exp)) {
+        return true;
+    } else if (isOp<BvUCmp>(exp) || isOp<BvArithOp>(exp)) {
+        bool res = true;    
+        for (int i = 0; i < exp->arity(); i++)
+            res &= isBvArith(exp->arg(i));
+        return res;
+    } else {
+        return false;
+    }
+}
+
+Expr rewriteDivisible(Expr exp)
+{
     unsigned size = getBvSize(exp);
     ExprFactory& efac = exp->getFactory();
     Expr lhs = exp->left(), rhs = exp->right();
@@ -131,30 +137,29 @@ Expr rewriteDivisible(Expr exp) {
     return disjoin(disjs, efac);
 }
 
-Expr rewriteRem(Expr exp) {
+Expr rewriteRem(Expr exp)
+{
     Expr lhs = exp->left(), rhs = exp->right();
     Expr r = mk<BMUL>(mk<BUDIV>(lhs, rhs), rhs);
     return mk<BSUB>(lhs, r);
 }
 
-// normalization rules
-
-// t(x) + y <= z ---> t(x) <= z-y && y <= z
-Expr add1(Expr xPart, Expr yPart, Expr zPart) 
+Expr ufo::bvReBuildCmp(Expr exp, Expr lhs, Expr rhs)
 {
-    Expr l = mk<BULE>(xPart, mk<BSUB>(zPart, yPart));
-    Expr r = mk<BULE>(yPart, zPart);
-    return mk<AND>(l, r);
+    if (isOpX<BULE>(exp))
+        return mk<BUGE>(rhs, lhs);
+    else if (isOpX<BUGE>(exp))
+        return mk<BULE>(rhs, lhs);
+    else if (isOpX<BULT>(exp))
+        return mk<BULE>(rhs, lhs);
+    assert(isOpX<BUGT>(exp));
+    return mk<BULT>(rhs, lhs);
 }
 
-// t(x) + y <= z ---> t(x) <= z-y && -y <= t(x)
-Expr add2(Expr xPart, Expr yPart, Expr zPart) 
+bool ufo::isBmulVar(Expr e, Expr var)
 {
-    ExprFactory& efac = xPart->getFactory();
-    unsigned size = getBvSize(yPart);
-    Expr bvZero = bvConstFromNumber(0, size, efac);
-    Expr l = mk<BULE>(xPart, mk<BSUB>(zPart, yPart));
-    Expr r = mk<BULE>(mk<BSUB>(bvZero, yPart), zPart);
-    outs() << "\n";
-    return mk<AND>(l, r);
+    if (!isOpX<BMUL>(e)) return false;
+    else if (bv::is_bvnum(e->right()) && var == e->left()) return true;
+    else if (bv::is_bvnum(e->left()) && var == e->right()) return true;
+    return false;
 }

@@ -6,6 +6,7 @@
 #include "ufo/Smt/EZ3.hh"
 #include "ae/ExprBvUtils.hpp"
 #include "ufo/ExprBv.hh"
+#include "common.h"
 
 using namespace std;
 using namespace expr::op::bind;
@@ -4630,12 +4631,11 @@ namespace ufo
     } else if (isOpX<NEQ>(exp) && !containsOp<MOD>(exp)) {
       getLiterals(mk<BUGT>(el, er), lits, splitEqs);
       getLiterals(mk<BULT>(el, er), lits, splitEqs);
-    } else if (isOp<BvSCmp>(exp)) {
-      exp = rewriteSignedCmp(exp);
-      getLiterals(exp, lits, splitEqs);
     } else if (isOp<BvUCmp>(exp)) {
       // rewrite div and rem
       lits.insert(exp);
+    } else {
+      unreachable();
     }
   }
 
