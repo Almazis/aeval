@@ -163,3 +163,104 @@ bool ufo::isBmulVar(Expr e, Expr var)
     else if (bv::is_bvnum(e->left()) && var == e->right()) return true;
     return false;
 }
+
+Expr ufo::bvAdditiveInverse(Expr e)
+{
+    if (isOpX<BADD>(e))
+    {
+      ExprVector terms;
+      for (auto it = e->args_begin (), end = e->args_end (); it != end; ++it)
+      {
+        getBaddTerm(bvAdditiveInverse(*it), terms);
+      }
+      return mknary<BADD>(terms);
+    }
+    else if (isOpX<BSUB>(e))
+    {
+      ExprVector terms;
+      getBaddTerm(bvAdditiveInverse(*e->args_begin ()), terms);
+      auto it = e->args_begin () + 1;
+      for (auto end = e->args_end (); it != end; ++it)
+      {
+        getBaddTerm(*it, terms);
+      }
+      return mknary<BADD>(terms);
+    }
+    else if (isOpX<BNEG>(e))
+    {
+      return e->left();
+    }
+    else if (isOpX<ITE>(e))
+    {
+      return mk<ITE>(e->left(), bvAdditiveInverse(e->right()), bvAdditiveInverse(e->last()));
+    }
+
+    return mk<BNEG>(e);
+}
+
+void ufo::getBaddTerm (Expr a, ExprVector &terms)
+{   
+    if (isOpX<BADD>(a))
+    {
+        for (auto it = a->args_begin (), end = a->args_end (); it != end; ++it)
+        {
+            getBaddTerm(*it, terms);
+        }
+    }
+    else if (isOpX<BSUB>(a))
+    {
+        auto it = a->args_begin ();
+        auto end = a->args_end ();
+        getBaddTerm(*it, terms);
+        ++it;
+        for (; it != end; ++it)
+        {
+            getBaddTerm(bvAdditiveInverse(*it), terms);
+        }
+    }
+    else if (isOpX<BNEG>(a))
+    {
+        ExprVector tmp;
+        getBaddTerm(a->left(), tmp);
+        for (auto & t : tmp)
+        {
+            bool toadd = true;
+            for (auto it = terms.begin(); it != terms.end(); )
+            {
+                if (*it == t)
+                {
+                    terms.erase(it);
+                    toadd = false;
+                    break;
+                }
+                else ++it;
+            }
+            if (toadd) terms.push_back(bvAdditiveInverse(t));
+        }
+    }
+    else if (isOpX<BMUL>(a))
+    {
+        Expr tmp = rewriteBmulBadd(a);
+        if (tmp == a) terms.push_back(a);
+        else getBaddTerm(tmp, terms);
+    }
+    // else if (bv::is_bvnum(a) && lexical_cast<string>(a->left()) == "0") 
+    // {
+    //     // do nothing
+    // }
+    else
+    {
+        bool found = false;
+        for (auto it = terms.begin(); it != terms.end(); )
+        {
+            if (bvAdditiveInverse(*it) == a)
+            {
+                terms.erase(it);
+                found = true;
+                break;
+            }
+            else ++it;
+        }
+        if (!found) terms.push_back(a);
+    }
+}

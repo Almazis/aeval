@@ -1972,6 +1972,46 @@ namespace ufo
     return dagVisit (mu, exp);
   }
 
+  struct BaddBmulDistr
+  {
+    BaddBmulDistr () {};
+
+    Expr operator() (Expr exp)
+    {
+      if (isOpX<BMUL>(exp) && exp->arity() == 2)
+      {
+        Expr lhs = exp->left();
+        Expr rhs = exp->right();
+
+        ExprVector alllhs;
+        getBaddTerm(lhs, alllhs);
+
+        ExprVector allrhs;
+        getBaddTerm(rhs, allrhs);
+
+        ExprVector unf;
+        for (auto &a : alllhs)
+        {
+          for (auto &b : allrhs)
+          {
+            unf.push_back(mk<BMUL>(a, b));
+          }
+        }
+        if (unf.size() == 1)
+          return unf.back();
+        else
+          return mknary<BADD>(unf);
+      }
+      return exp;
+    }
+  };
+
+  inline static Expr rewriteBmulBadd (Expr exp)
+  {
+      RW<BaddBmulDistr> mu(new BaddBmulDistr());
+      return dagVisit (mu, exp);
+  }
+
   struct FindNonlinAndRewrite
   {
     ExprVector& vars;

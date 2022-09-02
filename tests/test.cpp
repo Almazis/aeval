@@ -37,3 +37,20 @@ TEST_CASE("Mine size of bv arith", "[Bv]") {
         REQUIRE(getBvSize(bop) == size);
     }
 }
+
+TEST_CASE("Get badd terms", "[Bv]") {
+    ExprFactory efac;
+    ExprVector terms;
+    unsigned size = 4;
+    // for(unsigned size = 1; size <= 64; size++) {
+    Expr bvec1 = bv::bvnum(mpz_class(1), size, efac);
+    Expr bvec2 = bv::bvnum(mpz_class(2), size, efac);
+    Expr e = mk<BADD>(bvec1, bvec2);
+    Expr e1 = mk<BMUL>(bvec2, e);
+    
+    getBaddTerm(e1, terms);
+    outs() << e1 << endl;
+    for (auto t : terms)
+        outs() << t << endl;
+    // }    
+}

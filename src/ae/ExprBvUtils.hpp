@@ -16,6 +16,13 @@ namespace ufo
   void getBaddTerm (Expr a, ExprVector &terms);
   Expr bvReBuildCmp(Expr exp, Expr lhs, Expr rhs);
   bool isBmulVar(Expr e, Expr var);
+
+  template<typename Range> static Expr mkbadd(Range& terms, ExprFactory &efac){ 
+    assert(terms.size() > 0);
+    return
+      (terms.size() == 1) ? *terms.begin() :
+      mknary<BADD>(terms);
+  }
 }
 #endif
 
