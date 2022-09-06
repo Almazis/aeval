@@ -8,6 +8,15 @@ static inline bool addIsApplicable (Expr exp, Expr eVar) {
     return isOp<BvUCmp>(exp) && contains(lhs, eVar) && !contains(rhs, eVar);
 }
 
+void CmpSplitter::split(splitedCmp& out)
+{
+    out.exp = exp;
+    out.tx = mkbadd(xPart);
+    out.y = mkbadd(yPart);
+    out.r = r;
+    this->nextSplit();
+}
+
 // t(x) + y <= r ---> t(x) <= r-y && y <= r
 bool add1::apply(splitedCmp cmp, ExprSet &out)
 {
@@ -71,7 +80,6 @@ void normalizator::run_queue(ExprSet& outSet)
                         if(res) break;
                     }
                     if(res) break;
-                    splitter.nextSplit();
                 }
 
                 if (!res) {

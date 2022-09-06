@@ -40,13 +40,7 @@ public:
         xPart.push_back(tmp);
     }
 
-    void split(splitedCmp& out)
-    {
-        out.exp = exp;
-        out.tx = mknary<BADD>(xPart);
-        out.y = mknary<BADD>(yPart);
-        out.r = r;
-    }
+    void split(splitedCmp& out);
 
 };
 

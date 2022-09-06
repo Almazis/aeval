@@ -16,8 +16,10 @@ namespace ufo
   void getBaddTerm (Expr a, ExprVector &terms);
   Expr bvReBuildCmp(Expr exp, Expr lhs, Expr rhs);
   bool isBmulVar(Expr e, Expr var);
+  bool isBvArith(Expr e);
+  void getBvMultVars(Expr e, Expr var, ExprVector& outs);
 
-  template<typename Range> static Expr mkbadd(Range& terms, ExprFactory &efac){ 
+  template<typename Range> static Expr mkbadd(Range& terms){ 
     assert(terms.size() > 0);
     return
       (terms.size() == 1) ? *terms.begin() :

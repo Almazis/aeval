@@ -106,7 +106,7 @@ Expr ufo::rewriteSignedCmp(Expr exp)
     }
 }
 
-bool isBvArith(Expr exp)
+bool ufo::isBvArith(Expr exp)
 {
     if (bv::is_bvnum(exp) || bv::is_bvconst(exp)) {
         return true;
@@ -173,7 +173,7 @@ Expr ufo::bvAdditiveInverse(Expr e)
       {
         getBaddTerm(bvAdditiveInverse(*it), terms);
       }
-      return mknary<BADD>(terms);
+      return mkbadd(terms);
     }
     else if (isOpX<BSUB>(e))
     {
@@ -184,7 +184,7 @@ Expr ufo::bvAdditiveInverse(Expr e)
       {
         getBaddTerm(*it, terms);
       }
-      return mknary<BADD>(terms);
+      return mkbadd(terms);
     }
     else if (isOpX<BNEG>(e))
     {
@@ -262,5 +262,16 @@ void ufo::getBaddTerm (Expr a, ExprVector &terms)
             else ++it;
         }
         if (!found) terms.push_back(a);
+    }
+}
+
+void ufo::getBvMultVars(Expr e, Expr var, ExprVector& outs)
+{
+    ExprVector adds;
+    getBaddTerm(e, adds);
+    for (auto a : adds)
+    {
+        if (contains(a, var))
+            outs.push_back(a);
     }
 }

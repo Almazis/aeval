@@ -2000,7 +2000,7 @@ namespace ufo
         if (unf.size() == 1)
           return unf.back();
         else
-          return mknary<BADD>(unf);
+          return mkbadd(unf);
       }
       return exp;
     }

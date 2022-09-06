@@ -164,14 +164,16 @@ namespace ufo
      */
     void getMBPandSkolem(ZSolver<EZ3>::Model &m)
     {
+      
       Expr pr = t;
       ExprMap substsMap;
       ExprMap modelMap;
       for(auto &exp : v)
       {
+        MBPUtils mbpu(exp, m, u);
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
-        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, m, u, debug));
+        pr = simplifyArithm(mbpu.mixQE(conjoin(lits, efac), debug));
         if(m.eval(exp) != exp)
           modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
