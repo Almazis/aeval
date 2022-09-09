@@ -5,6 +5,11 @@
 
 namespace ufo
 {
+  struct bvMultCoef{
+    int coef;
+    bool overflows;
+  };
+
   unsigned getBvSize(Expr exp);
   Expr rewriteSignedCmp(Expr exp);
   void getSignedCmps (Expr a, ExprVector &scmps);
@@ -18,7 +23,7 @@ namespace ufo
   bool isBmulVar(Expr e, Expr var);
   bool isBvArith(Expr e);
   void getBvMultVars(Expr e, Expr var, ExprVector& outs);
-
+  bvMultCoef oveflowChecker(ExprVector& adds, Expr var);
   template<typename Range> static Expr mkbadd(Range& terms){ 
     assert(terms.size() > 0);
     return

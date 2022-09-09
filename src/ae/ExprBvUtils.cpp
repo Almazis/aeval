@@ -275,3 +275,44 @@ void ufo::getBvMultVars(Expr e, Expr var, ExprVector& outs)
             outs.push_back(a);
     }
 }
+
+// static int mulParser(Expr e, Expr var);
+
+static int mulParser(Expr e, Expr var) {
+
+    if (e == var) {
+        return 1;
+    } else if (bv::is_bvnum(e)) {
+        int c = lexical_cast<int>(bv::toMpz(e));
+        return  c;
+    } else if (isOpX<BNEG>(e)) {
+        return -mulParser(e->left(), var);
+    } else if (isOpX<BMUL>(e)) {
+        int res = 1; // TODO: check overflow inside int
+        for (int i = 0; i < e->arity(); i++)
+            res *= mulParser(e->arg(i), var);
+        return res;
+    } else {
+        unreachable();
+    }
+}
+
+bvMultCoef ufo::oveflowChecker(ExprVector& adds, Expr var)
+{
+    if (adds.size() == 0)
+        return {0, false};
+    int coef = 0;
+    for (auto a : adds) {
+        if (!contains(a, var))
+            continue;
+
+        int mCoef = mulParser(a, var);
+        // check overflow inside coef int here
+        if (coef >= 0 && mCoef >= 0 && coef+mCoef < coef)
+            return {0, true};
+        if (coef <= 0 && mCoef <=0 && coef+mCoef > coef)
+            return {0, true};
+        coef += mCoef;
+    }
+    return {coef, false};
+}
