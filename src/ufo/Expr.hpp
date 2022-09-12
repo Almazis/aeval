@@ -2341,7 +2341,9 @@ namespace expr
         if (isOpX<CONST_ARRAY>(v)) return sort::arrayTy(v->left(), typeOf(v->right()));
 
         if(isOp<BvArithOp>(v) || isOp<BvOp>(v)) return typeOf(v->left());
-        
+        if(isOp<BvSCmp>(v) || isOp<BvUCmp>(v))
+          return mk<BOOL_TY> (v->efac ());
+
 //      std::cerr << "WARNING: could not infer type of: " << *v << "\n";
 //      assert (0 && "Unreachable");
 

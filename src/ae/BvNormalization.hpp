@@ -80,17 +80,17 @@ public:
     bool apply(splitedCmp cmp, ExprSet &out) override;
 };
 
-class add3 : public rw_rule {
-public:
-    add3(rw_rule r) : rw_rule(r) {};
-    bool apply(splitedCmp cmp, ExprSet &out) override;
-};
+// class add3 : public rw_rule {
+// public:
+//     add3(rw_rule r) : rw_rule(r) {};
+//     bool apply(splitedCmp cmp, ExprSet &out) override;
+// };
 
-class add4 : public rw_rule {
-public:
-    add4(rw_rule r) : rw_rule(r) {};
-    bool apply(splitedCmp cmp, ExprSet &out) override;
-};
+// class add4 : public rw_rule {
+// public:
+//     add4(rw_rule r) : rw_rule(r) {};
+//     bool apply(splitedCmp cmp, ExprSet &out) override;
+// };
 
 class normalizator {
     bool failed = false;
@@ -111,8 +111,8 @@ public:
     {
         add_rules.push_back(add1(dummyRwRule));
         add_rules.push_back(add2(dummyRwRule));
-        add_rules.push_back(add3(dummyRwRule));
-        add_rules.push_back(add4(dummyRwRule));
+        // add_rules.push_back(add3(dummyRwRule));
+        // add_rules.push_back(add4(dummyRwRule));
     };
     
     bool normalize(Expr e, ExprSet& outSet) 

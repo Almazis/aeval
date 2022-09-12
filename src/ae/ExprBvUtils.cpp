@@ -1,3 +1,4 @@
+#include<cmath>
 #include "common.h"
 #include "ae/ExprSimpl.hpp"
 #include "ae/ExprBvUtils.hpp"
@@ -20,8 +21,10 @@ void ufo::getSignedCmps (Expr a, ExprVector &scmps)
 
 static void mineBvSizes(Expr exp, uintSet& sizes) 
 {
-    if (bv::is_bvnum(exp) || bv::is_bvconst(exp)) {
+    if (bv::is_bvnum(exp)) {
         sizes.insert(bv::width(exp->right()));
+    } else if (bv::is_bvconst(exp)) {
+        sizes.insert(bv::width(exp->first()->arg(1)));
     } else if (isOp<BvArithOp>(exp) || isOp<BvOp>(exp)) {
         for (int i = 0; i < exp->arity(); i++)
             mineBvSizes(exp->arg(i), sizes);
@@ -50,22 +53,25 @@ unsigned ufo::getBvSize(Expr exp)
     return bvSize;
 }
 
-static inline Expr bvConstFromNumber(int val, unsigned size, ExprFactory& efac)
-{
-    return bv::bvConst(mkTerm (mpz_class(val), efac), size);
-}
-
 Expr ufo::reBuildBvNegCmp(Expr fla, Expr lhs, Expr rhs)
 {
-    // signed cmps must be eliminated beforehand
     if (isOpX<BULE>(fla))
         return mk<BUGT>(lhs, rhs);
     else if (isOpX<BUGE>(fla))
         return mk<BULT>(lhs, rhs);
     else if (isOpX<BULT>(fla))
         return mk<BUGE>(lhs, rhs);
-    assert(isOpX<BUGT>(fla));
-    return mk<BULE>(lhs, rhs);
+    else if (isOpX<BUGT>(fla))
+        return mk<BULE>(lhs, rhs);
+    
+    else if (isOpX<BSLE>(fla))
+        return mk<BSGT>(lhs, rhs);
+    else if (isOpX<BSGE>(fla))
+        return mk<BSLT>(lhs, rhs);
+    else if (isOpX<BSLT>(fla))
+        return mk<BSGE>(lhs, rhs);
+    assert(isOpX<BSGT>(fla));
+    return mk<BSLE>(lhs, rhs);
 }
 
 template <typename T> Expr rewriteSignedHelper(Expr exp)
@@ -74,8 +80,8 @@ template <typename T> Expr rewriteSignedHelper(Expr exp)
     ExprFactory& efac = exp->getFactory();
     Expr lhs = exp->left(), rhs = exp->right();
 
-    int val = 2^(size - 1);
-    Expr constBv = bvConstFromNumber(val, size, efac);
+    int val = pow(2, (size - 1));
+    Expr constBv = bv::bvnum(mpz_class(val), size, efac);
     ExprSet disjs, lconjs, rconjs;
     lconjs.insert(mk<BULT>(lhs, constBv));
     lconjs.insert(mk<BULT>(rhs, constBv));
@@ -125,8 +131,8 @@ Expr rewriteDivisible(Expr exp)
     unsigned size = getBvSize(exp);
     ExprFactory& efac = exp->getFactory();
     Expr lhs = exp->left(), rhs = exp->right();
-    Expr bvZero = bvConstFromNumber(0, size, efac);
-    Expr bvOne = bvConstFromNumber(1, size, efac);
+    Expr bvZero = bv::bvnum(mpz_class(0), size, efac);
+    Expr bvOne = bv::bvnum(mpz_class(1), size, efac);
 
     ExprSet disjs;
     disjs.insert(mk<EQ>(lhs, bvZero));
