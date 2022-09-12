@@ -112,6 +112,36 @@ Expr MBPUtils::lraMultTrans(Expr t)
 }
 
 /**
+ * bvQE - MBP procedure for bitvector arithmetics
+ * @sSet: set of inequalities, not normalized
+ */
+Expr MBPUtils::bvQE(ExprSet sSet)
+{
+  normalizator n(eVar, m);
+  ExprSet normalizedSet;
+  for (auto e : sSet) {
+    bool success = n.normalize(e, normalizedSet);
+    if (!success)
+      normalizedSet.insert(replaceAll(e, eVar, m.eval(eVar)));
+  }
+
+  // filter out everything with no eVar
+  ExprSet borders;
+  for (auto ne : normalizedSet) {
+    if (contains(ne, eVar)) {
+      borders.insert(ne);
+      normalizedSet.erase(ne);
+    }
+  }
+
+  
+
+
+
+  return bv::bvnum(mpz_class(0), 4, efac); // dummy
+}
+
+/**
  * realQE - MBP procedure for LRA
  * @sSet: set of inequalities with eVar on lhs
  */
@@ -329,7 +359,7 @@ Expr MBPUtils::ineqPrepare(Expr t)
     else if(isInt(eVar) && (intVSreal == INTTYPE))
       return t;
     else if(intVSreal != NOTYPE)
-      notImplemented();
+      notImplemented(); // MIXTYPE not supported
   }
   else if (isOp<BvUCmp>(t))
   {
@@ -353,12 +383,13 @@ Expr MBPUtils::ineqPrepare(Expr t)
     if(coefLeft.overflows || coefLeft.coef > maxVal)
       return replaceAll(t, eVar, m.eval(eVar));
 
-    if(abs(coefLeft.coef - coefRight.coef) > maxVal)
+    if(coefLeft.coef - coefRight.coef > maxVal ||
+       coefRight.coef - coefLeft.coef > maxVal)
       return replaceAll(t, eVar, m.eval(eVar));
 
-    lefts.erase(remove_if(rights.begin(), rights.end(), 
+    lefts.erase(remove_if(lefts.begin(), lefts.end(), 
                   [&](Expr e) {return contains(e, eVar);}), 
-                  rights.end());
+                  lefts.end());
     rights.erase(remove_if(rights.begin(), rights.end(), 
                   [&](Expr e) {return contains(e, eVar);}), 
                   rights.end());
@@ -411,7 +442,8 @@ Expr MBPUtils::mixQE(Expr s, int debug)
   }
 
   if(!sameTypeSet.empty())
-    outSet.insert(isReal(eVar) ? realQE(sameTypeSet)
+    outSet.insert(isBv(eVar) ? bvQe(sameTypeSet)
+                  : isReal(eVar) ? realQE(sameTypeSet)
                                : intQE(sameTypeSet));
 
   return conjoin(outSet, efac);

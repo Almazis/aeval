@@ -35,6 +35,7 @@ namespace ufo {
     int coefTrans(ExprVector &sVec);
     Expr intQE(ExprSet sSet);
     Expr ineqPrepare(Expr t);
+    Expr bvQE(ExprSet sSet);
 
 
   public:
