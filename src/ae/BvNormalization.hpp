@@ -38,11 +38,12 @@ protected:
     Expr var;
     ExprFactory& efac;
     ZSolver<EZ3>::Model& m;
+    int bvSize;
 public:
     rw_rule(Expr _var, ZSolver<EZ3>::Model& _m) :
-        var(_var), efac(var->getFactory()), m(_m) {};
+        var(_var), efac(var->getFactory()), m(_m) {}; // bvSize = getBvSize
     rw_rule(const rw_rule & r) :
-        var(r.var), efac(var->getFactory()), m(r.m) {};
+        var(r.var), efac(var->getFactory()), m(r.m), bvSize(r.bvSize) {};
     
     /**
      * @brief returns true if the rule can be applied to the expression 
@@ -69,17 +70,59 @@ public:
     bool apply(splitedCmp cmp, ExprSet &out) override;
 };
 
-// class add3 : public rw_rule {
-// public:
-//     add3(rw_rule r) : rw_rule(r) {};
-//     bool apply(splitedCmp cmp, ExprSet &out) override;
-// };
+class add3 : public rw_rule {
+public:
+    add3(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
 
-// class add4 : public rw_rule {
-// public:
-//     add4(rw_rule r) : rw_rule(r) {};
-//     bool apply(splitedCmp cmp, ExprSet &out) override;
-// };
+class add4 : public rw_rule {
+public:
+    add4(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class add5 : public rw_rule {
+public:
+    add5(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class add6 : public rw_rule {
+public:
+    add6(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class add7 : public rw_rule {
+public:
+    add7(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class both1 : public rw_rule {
+public:
+    both1(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class both2 : public rw_rule {
+public:
+    both2(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class both3 : public rw_rule {
+public:
+    both3(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
+
+class both4 : public rw_rule {
+public:
+    both4(rw_rule r) : rw_rule(r) {};
+    bool apply(splitedCmp cmp, ExprSet &out) override;
+};
 
 class normalizator {
     bool failed = false;
@@ -90,6 +133,7 @@ class normalizator {
     ExprSet tmpOutSet;
     rw_rule dummyRwRule;
     std::vector<rw_rule> add_rules; // vector of add rules
+    std::vector<rw_rule> both_rules; // vector of both rules
 
     void enqueue(Expr e) {queue.insert(e);}
     void run_queue();
@@ -101,8 +145,16 @@ public:
     {
         add_rules.push_back(add1(dummyRwRule));
         add_rules.push_back(add2(dummyRwRule));
-        // add_rules.push_back(add3(dummyRwRule));
-        // add_rules.push_back(add4(dummyRwRule));
+        add_rules.push_back(add3(dummyRwRule));
+        add_rules.push_back(add4(dummyRwRule));
+        add_rules.push_back(add5(dummyRwRule));
+        add_rules.push_back(add6(dummyRwRule));
+        add_rules.push_back(add7(dummyRwRule));
+
+        both_rules.push_back(both1(dummyRwRule));
+        both_rules.push_back(both2(dummyRwRule));
+        both_rules.push_back(both3(dummyRwRule));
+        both_rules.push_back(both4(dummyRwRule));   
     };
     
     bool normalize(Expr e, ExprSet& outSet) 

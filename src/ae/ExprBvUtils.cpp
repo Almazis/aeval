@@ -1,4 +1,4 @@
-#include<cmath>
+#include <cmath>
 #include "common.h"
 #include "ae/ExprSimpl.hpp"
 #include "ae/ExprBvUtils.hpp"
@@ -153,14 +153,40 @@ Expr rewriteRem(Expr exp)
 Expr ufo::bvReBuildCmp(Expr exp, Expr lhs, Expr rhs)
 {
     if (isOpX<BULE>(exp))
-        return mk<BUGE>(rhs, lhs);
+        return mk<BULE>(lhs, rhs);
     else if (isOpX<BUGE>(exp))
-        return mk<BULE>(rhs, lhs);
+        return mk<BUGE>(lhs, rhs);
     else if (isOpX<BULT>(exp))
-        return mk<BULE>(rhs, lhs);
+        return mk<BULT>(lhs, rhs);
     assert(isOpX<BUGT>(exp));
-    return mk<BULT>(rhs, lhs);
+    return mk<BUGT>(lhs, rhs);
 }
+
+Expr ufo::bvFlipCmp(Expr fla, Expr lhs, Expr rhs)
+  {
+    if (isOpX<EQ>(fla))
+    {
+      return mk<EQ>(rhs, lhs);
+    }
+    if (isOpX<NEQ>(fla))
+    {
+      return mk<NEQ>(rhs, lhs);
+    }
+    if (isOpX<BULE>(fla))
+    {
+      return mk<BUGE>(rhs, lhs);
+    }
+    if (isOpX<BUGE>(fla))
+    {
+      return mk<BULE>(rhs, lhs);
+    }
+    if (isOpX<BULT>(fla))
+    {
+      return mk<BUGT>(rhs, lhs);
+    }
+    assert(isOpX<BUGT>(fla));
+    return mk<BULE>(rhs, lhs);
+  }
 
 bool ufo::isBmulVar(Expr e, Expr var)
 {
@@ -168,6 +194,16 @@ bool ufo::isBmulVar(Expr e, Expr var)
     else if (bv::is_bvnum(e->right()) && var == e->left()) return true;
     else if (bv::is_bvnum(e->left()) && var == e->right()) return true;
     return false;
+}
+
+Expr ufo::getBmulVar(Expr e, Expr var)
+{
+    assert(isBmulVar(e, var));
+    if (bv::is_bvnum(e->right())) 
+        return e->right();
+    else 
+        return e->left();
+
 }
 
 Expr ufo::bvAdditiveInverse(Expr e)

@@ -20,7 +20,9 @@ namespace ufo
   Expr bvAdditiveInverse(Expr e);
   void getBaddTerm (Expr a, ExprVector &terms);
   Expr bvReBuildCmp(Expr exp, Expr lhs, Expr rhs);
+  Expr bvFlipCmp(Expr fla, Expr lhs, Expr rhs);
   bool isBmulVar(Expr e, Expr var);
+  Expr getBmulVar(Expr e, Expr var);
   bool isBvArith(Expr e);
   void getBvMultVars(Expr e, Expr var, ExprVector& outs);
   bvMultCoef oveflowChecker(ExprVector& adds, Expr var);
