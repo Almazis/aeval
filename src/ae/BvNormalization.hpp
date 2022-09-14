@@ -1,7 +1,6 @@
 #ifndef BVNORM__HPP__
 #define BVNORM__HPP__
 #include "ufo/Smt/EZ3.hh"
-#include "ae/ExprBvUtils.hpp"
 
 using namespace ufo;
 
@@ -18,21 +17,11 @@ class CmpSplitter {
     ExprVector xPart;
     ExprVector yPart;
     Expr r;
+    bool overflow;
 public:
-    CmpSplitter(Expr _exp, Expr var) : exp(_exp), r(exp->right())
-    {
-        assert(isOp<BvUCmp>(exp));
-        ExprVector terms;
-        getBaddTerm(exp->left(), terms);
-        for (auto t: terms) {
-            if(contains(t, var))
-                xPart.push_back(t);
-            else
-                yPart.push_back(t);
-        }
-    }
+    CmpSplitter(Expr _exp, Expr var);
 
-    bool canSplit() {return (yPart.size() > 1);}
+    bool canSplit() {return (!overflow && yPart.size() > 1);}
 
     void nextSplit() {
         Expr tmp = yPart.back ();
@@ -98,11 +87,12 @@ class normalizator {
     ExprFactory& efac;
     ZSolver<EZ3>::Model& m;
     ExprSet queue; // TODO: not a set
+    ExprSet tmpOutSet;
     rw_rule dummyRwRule;
     std::vector<rw_rule> add_rules; // vector of add rules
 
     void enqueue(Expr e) {queue.insert(e);}
-    void run_queue(ExprSet& outSet);
+    void run_queue();
     void set_failed() {failed = true;}
     void clear_failed() {failed = false;}
 public:
@@ -119,9 +109,14 @@ public:
     {
         clear_failed();
         queue.clear();
-        outSet.clear();
+        tmpOutSet.clear();
         enqueue(e);
-        run_queue(outSet);
+        run_queue();
+        if (!failed) {
+            for (auto a : tmpOutSet) {
+                outSet.insert(a);
+            }
+        }
         return (!failed);
     }
 };

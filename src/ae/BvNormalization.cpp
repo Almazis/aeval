@@ -1,4 +1,5 @@
 #include "ae/BvNormalization.hpp"
+#include "ae/ExprBvUtils.hpp"
 
 using namespace ufo;
 
@@ -6,6 +7,20 @@ static inline bool addIsApplicable (Expr exp, Expr eVar) {
     Expr lhs = exp->left();
     Expr rhs = exp->right();
     return isOp<BvUCmp>(exp) && contains(lhs, eVar) && !contains(rhs, eVar);
+}
+
+CmpSplitter::CmpSplitter(Expr _exp, Expr var) : exp(_exp), r(exp->right())
+{
+    assert(isOp<BvUCmp>(exp));
+    ExprVector terms;
+    getBaddTerm(exp->left(), terms);
+    for (auto t: terms) {
+        if(contains(t, var))
+            xPart.push_back(t);
+        else
+            yPart.push_back(t);
+    }
+    this->overflow = bvTrySquashCoefs(xPart, var);
 }
 
 void CmpSplitter::split(splitedCmp& out)
@@ -47,7 +62,7 @@ bool add2::apply(splitedCmp cmp, ExprSet &out)
     return false;
 }
 
-void normalizator::run_queue(ExprSet& outSet) 
+void normalizator::run_queue() 
 {
     while(!queue.empty()) {
         // pop
@@ -62,7 +77,7 @@ void normalizator::run_queue(ExprSet& outSet)
             // enqueue output
         } else if (contains(lhs, var)) {
             if (isBmulVar(lhs, var)) {
-                outSet.insert(curr);
+                tmpOutSet.insert(curr);
                 continue;
             } else if (isOpX<BNEG>(lhs)) {
                 // apply inv
@@ -83,7 +98,7 @@ void normalizator::run_queue(ExprSet& outSet)
                 }
 
                 if (!res) {
-                    // no add rule is applicable, abort
+                    // no rule is applicable, abort
                     set_failed();
                     return;
                 } else {

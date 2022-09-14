@@ -322,3 +322,23 @@ bvMultCoef ufo::oveflowChecker(ExprVector& adds, Expr var)
     }
     return {coef, false};
 }
+
+bool ufo::bvTrySquashCoefs(ExprVector& adds, Expr var)
+{
+    // check overflow and squash coefs
+    unsigned bvSize = getBvSize(var);
+    cpp_int maxVal = 2 ^ bvSize;
+    ExprVector lefts, rights;
+    
+    bvMultCoef coef = oveflowChecker(adds, var);
+    if(coef.overflows || coef.coef > maxVal)
+      return false;
+
+    adds.erase(remove_if(adds.begin(), adds.end(), 
+                  [&](Expr e) {return contains(e, var);}), 
+                  adds.end());
+    if (coef.coef != 0)
+      adds.push_back(mk<BMUL>(
+              bv::bvnum(mpz_class(coef.coef), bvSize, var->getFactory()), var));
+    return true;
+}

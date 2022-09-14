@@ -368,37 +368,7 @@ Expr MBPUtils::ineqPrepare(Expr t)
       return replaceAll(t, eVar, m.eval(eVar));
     // } 
 
-    // check overflow and squize coefs
-    // unsigned bvSize = getBvSize(t);
-    // cpp_int maxVal = 2 ^ bvSize;
-    // ExprVector lefts, rights;
-    
-    // getBaddTerm(t->left(), lefts);
-    // bvMultCoef coefLeft = oveflowChecker(lefts, eVar);
-    // if(coefLeft.overflows || coefLeft.coef > maxVal)
-    //   return replaceAll(t, eVar, m.eval(eVar));
-    
-    // getBaddTerm(t->right(), rights);
-    // bvMultCoef coefRight = oveflowChecker(rights, eVar);
-    // if(coefLeft.overflows || coefLeft.coef > maxVal)
-    //   return replaceAll(t, eVar, m.eval(eVar));
 
-    // if(coefLeft.coef - coefRight.coef > maxVal ||
-    //    coefRight.coef - coefLeft.coef > maxVal)
-    //   return replaceAll(t, eVar, m.eval(eVar));
-
-    // lefts.erase(remove_if(lefts.begin(), lefts.end(), 
-    //               [&](Expr e) {return contains(e, eVar);}), 
-    //               lefts.end());
-    // rights.erase(remove_if(rights.begin(), rights.end(), 
-    //               [&](Expr e) {return contains(e, eVar);}), 
-    //               rights.end());
-    // if (coefLeft.coef != 0)
-    //   lefts.push_back(mk<BMUL>(
-    //           bv::bvnum(mpz_class(coefLeft.coef), bvSize, efac), eVar));
-    // if (coefRight.coef != 0)
-    //   rights.push_back(mk<BMUL>(
-    //           bv::bvnum(mpz_class(coefRight.coef), bvSize, efac), eVar));    
 
     // return bvReBuildCmp(t, mkbadd(lefts), mkbadd(rights));
   }
