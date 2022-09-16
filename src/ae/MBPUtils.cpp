@@ -134,11 +134,11 @@ Expr MBPUtils::bvQE(ExprSet sSet)
     }
   }
 
+  // geq -> gt, lt -> leq
+  // mult trans helper
+  // merge borders 
 
-
-
-
-  return bv::bvnum(mpz_class(0), 4, efac); // dummy
+  return conjoin(borders, efac); // dummy
 }
 
 /**
@@ -363,14 +363,14 @@ Expr MBPUtils::ineqPrepare(Expr t)
   }
   else if (isOp<BvUCmp>(t))
   {
-    // if (!isBvArith(t)) {
-      // replace by model
+    if (!isBvArith(t))
       return replaceAll(t, eVar, m.eval(eVar));
-    // } 
-
-
-
-    // return bvReBuildCmp(t, mkbadd(lefts), mkbadd(rights));
+    outs() << t << " I will be normalized\n";
+    if (isOpX<BULT>(t))
+      return bultToBule(t, m);
+    else if (isOpX<BUGT>(t))
+      return bugtToBuge(t, m);
+    return t;
   }
   else
     unreachable();
@@ -404,16 +404,13 @@ Expr MBPUtils::mixQE(Expr s, int debug)
     }
     // rewrite and check type
     t = ineqPrepare(t);
-    if(!contains(t, eVar)) {
-      outSet.insert(t);
-      continue;
-    }
     sameTypeSet.insert(t);
   }
 
   if(!sameTypeSet.empty())
-    outSet.insert(isReal(eVar) ? realQE(sameTypeSet)
-                               : intQE(sameTypeSet));
+    outSet.insert(isBv(eVar) ? bvQE(sameTypeSet) :
+                  isReal(eVar) ? realQE(sameTypeSet) :
+                  intQE(sameTypeSet));
 
   return conjoin(outSet, efac);
 }

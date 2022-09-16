@@ -753,6 +753,11 @@ namespace ufo
       outs().flush ();
     }
   };
+
+  static inline bool isTrueInModel(Expr e, ZSolver<EZ3>::Model& m)
+  {
+    return(isOpX<TRUE>(m.eval(e)));
+  }
 }
 
 #endif

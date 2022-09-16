@@ -40,8 +40,7 @@ protected:
     ZSolver<EZ3>::Model& m;
     int bvSize;
 public:
-    rw_rule(Expr _var, ZSolver<EZ3>::Model& _m) :
-        var(_var), efac(var->getFactory()), m(_m) {}; // bvSize = getBvSize
+    rw_rule(Expr _var, ZSolver<EZ3>::Model& _m);
     rw_rule(const rw_rule & r) :
         var(r.var), efac(var->getFactory()), m(r.m), bvSize(r.bvSize) {};
     

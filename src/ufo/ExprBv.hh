@@ -77,7 +77,10 @@ namespace expr
       /// bit-vector numeral of an arbitrary precision integer
       inline Expr bvnum (mpz_class num, unsigned bwidth, ExprFactory &efac)
       {return bvnum (mkTerm (num, efac), bvsort (bwidth, efac));}
-      
+
+      inline Expr bvnum (int num, unsigned bwidth, ExprFactory &efac)
+      {return bvnum(mpz_class(num), bwidth, efac);}
+
       /// true if v is a bit-vector numeral
       inline bool is_bvnum (Expr v)
       {

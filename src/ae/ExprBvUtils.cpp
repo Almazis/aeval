@@ -2,6 +2,7 @@
 #include "common.h"
 #include "ae/ExprSimpl.hpp"
 #include "ae/ExprBvUtils.hpp"
+#include "ae/SMTUtils.hpp"
 
 using namespace ufo;
 using namespace boost::multiprecision;
@@ -81,7 +82,7 @@ template <typename T> Expr rewriteSignedHelper(Expr exp)
     Expr lhs = exp->left(), rhs = exp->right();
 
     int val = pow(2, (size - 1));
-    Expr constBv = bv::bvnum(mpz_class(val), size, efac);
+    Expr constBv = bv::bvnum(val, size, efac);
     ExprSet disjs, lconjs, rconjs;
     lconjs.insert(mk<BULT>(lhs, constBv));
     lconjs.insert(mk<BULT>(rhs, constBv));
@@ -131,8 +132,8 @@ Expr rewriteDivisible(Expr exp)
     unsigned size = getBvSize(exp);
     ExprFactory& efac = exp->getFactory();
     Expr lhs = exp->left(), rhs = exp->right();
-    Expr bvZero = bv::bvnum(mpz_class(0), size, efac);
-    Expr bvOne = bv::bvnum(mpz_class(1), size, efac);
+    Expr bvZero = bv::bvnum(0, size, efac);
+    Expr bvOne = bv::bvnum(1, size, efac);
 
     ExprSet disjs;
     disjs.insert(mk<EQ>(lhs, bvZero));
@@ -335,6 +336,7 @@ static int mulParser(Expr e, Expr var) {
             res *= mulParser(e->arg(i), var);
         return res;
     } else {
+        outs() << e << std::endl;
         unreachable();
     }
 }
@@ -377,4 +379,72 @@ bool ufo::bvTrySquashCoefs(ExprVector& adds, Expr var)
       adds.push_back(mk<BMUL>(
               bv::bvnum(mpz_class(coef.coef), bvSize, var->getFactory()), var));
     return true;
+}
+
+Expr ufo::buleToBult(Expr e, ZSolver<EZ3>::Model& m)
+{
+    // a <= A  <=> a = 0 \/ a-1 < A
+    if (!isOpX<BULE>(e))
+        return e;
+    
+    ExprFactory &efac = e->getFactory();
+    Expr lhs = e->left(), rhs = e->right();
+    int bvSize = getBvSize(e);
+    
+    Expr eqToZero = mk<EQ>(lhs, bv::bvnum(0, bvSize, efac));
+    if (isTrueInModel(eqToZero ,m))
+        return eqToZero;
+    else
+        return mk<BULT>(mk<BSUB>(lhs, bv::bvnum(1, bvSize, efac)), rhs);
+}
+
+Expr ufo::bultToBule(Expr e, ZSolver<EZ3>::Model& m)
+{
+    // B < b <=> b != 0 \/ B <= b -1 
+    if (!isOpX<BULT>(e))
+        return e;
+    
+    ExprFactory &efac = e->getFactory();
+    Expr lhs = e->left(), rhs = e->right();
+    int bvSize = getBvSize(e);
+    
+    Expr neqToZero = mk<NEQ>(rhs, bv::bvnum(0, bvSize, efac));
+    if (isTrueInModel(neqToZero ,m))
+        return neqToZero;
+    else
+        return mk<BULE>(lhs, mk<BSUB>(rhs, bv::bvnum(1, bvSize, efac)));
+}
+
+Expr ufo::bugeToBugt(Expr e, ZSolver<EZ3>::Model& m)
+{
+    // A >= a <=> a = 0 \/ A > a-1
+    if (!isOpX<BUGE>(e))
+        return e;
+    
+    ExprFactory &efac = e->getFactory();
+    Expr lhs = e->left(), rhs = e->right();
+    int bvSize = getBvSize(e);
+    
+    Expr eqToZero = mk<EQ>(rhs, bv::bvnum(0, bvSize, efac));
+    if (isTrueInModel(eqToZero ,m))
+        return eqToZero;
+    else
+        return mk<BUGT>(lhs, mk<BSUB>(rhs, bv::bvnum(1, bvSize, efac)));
+}
+
+Expr ufo::bugtToBuge(Expr e, ZSolver<EZ3>::Model& m)
+{
+    // b > B <=> b != 0 \/ b-1 >= B 
+    if (!isOpX<BUGT>(e))
+        return e;
+    
+    ExprFactory &efac = e->getFactory();
+    Expr lhs = e->left(), rhs = e->right();
+    int bvSize = getBvSize(e);
+
+    Expr gtZero = mk<BULE>(lhs, bv::bvnum(1, bvSize, efac));
+    if (isTrueInModel(gtZero ,m))
+        return gtZero;
+    else
+        return mk<BUGE>(mk<BSUB>(lhs, bv::bvnum(1, bvSize, efac)), rhs);
 }
