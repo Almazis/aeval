@@ -186,7 +186,7 @@ Expr ufo::bvFlipCmp(Expr fla, Expr lhs, Expr rhs)
       return mk<BUGT>(rhs, lhs);
     }
     assert(isOpX<BUGT>(fla));
-    return mk<BULE>(rhs, lhs);
+    return mk<BULT>(rhs, lhs);
   }
 
 bool ufo::isBmulVar(Expr e, Expr var)
@@ -319,8 +319,6 @@ void ufo::getBvMultVars(Expr e, Expr var, ExprVector& outs)
     }
 }
 
-// static int mulParser(Expr e, Expr var);
-
 static int mulParser(Expr e, Expr var) {
 
     if (e == var) {
@@ -335,37 +333,40 @@ static int mulParser(Expr e, Expr var) {
         for (int i = 0; i < e->arity(); i++)
             res *= mulParser(e->arg(i), var);
         return res;
-    } else {
-        outs() << e << std::endl;
-        unreachable();
+    } else { // TODO: div
+        throw std::domain_error("Non-linear arithmetics");
     }
 }
 
 bvMultCoef ufo::oveflowChecker(ExprVector& adds, Expr var)
 {
-    if (adds.size() == 0)
-        return {0, false};
-    int coef = 0;
-    for (auto a : adds) {
-        if (!contains(a, var))
-            continue;
+    try {
+        if (adds.size() == 0)
+            return {0, false};
+        int coef = 0;
+        for (auto a : adds) {
+            if (!contains(a, var))
+                continue;
 
-        int mCoef = mulParser(a, var);
-        // check overflow inside coef int here
-        if (coef >= 0 && mCoef >= 0 && coef+mCoef < coef)
-            return {0, true};
-        if (coef <= 0 && mCoef <=0 && coef+mCoef > coef)
-            return {0, true};
-        coef += mCoef;
+            int mCoef = mulParser(a, var);
+            // check overflow inside coef int here
+            if (coef >= 0 && mCoef >= 0 && coef+mCoef < coef)
+                return {0, true};
+            if (coef <= 0 && mCoef <=0 && coef+mCoef > coef)
+                return {0, true};
+            coef += mCoef;
+        }
+        return {coef, false};
+    } catch (...) {
+        return {0, true};
     }
-    return {coef, false};
 }
 
 bool ufo::bvTrySquashCoefs(ExprVector& adds, Expr var)
 {
     // check overflow and squash coefs
     unsigned bvSize = getBvSize(var);
-    cpp_int maxVal = 2 ^ bvSize;
+    int maxVal = pow(2, bvSize) - 1;
     ExprVector lefts, rights;
     
     bvMultCoef coef = oveflowChecker(adds, var);
@@ -381,70 +382,59 @@ bool ufo::bvTrySquashCoefs(ExprVector& adds, Expr var)
     return true;
 }
 
-Expr ufo::buleToBult(Expr e, ZSolver<EZ3>::Model& m)
+void ufo::buleToBult(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out)
 {
     // a <= A  <=> a = 0 \/ a-1 < A
-    if (!isOpX<BULE>(e))
-        return e;
-    
+    assert(isOpX<BULE>(e));
     ExprFactory &efac = e->getFactory();
     Expr lhs = e->left(), rhs = e->right();
     int bvSize = getBvSize(e);
     
-    Expr eqToZero = mk<EQ>(lhs, bv::bvnum(0, bvSize, efac));
+    Expr eqToZero = mk<BULT>(lhs, bv::bvnum(1, bvSize, efac));
     if (isTrueInModel(eqToZero ,m))
-        return eqToZero;
+        out.insert(eqToZero);
     else
-        return mk<BULT>(mk<BSUB>(lhs, bv::bvnum(1, bvSize, efac)), rhs);
+        out.insert(mk<BULT>(mk<BSUB>(lhs, bv::bvnum(1, bvSize, efac)), rhs));
 }
 
-Expr ufo::bultToBule(Expr e, ZSolver<EZ3>::Model& m)
+void ufo::bultToBule(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out)
 {
-    // B < b <=> b != 0 \/ B <= b -1 
-    if (!isOpX<BULT>(e))
-        return e;
-    
+    // B < b <=> b != 0 /\ B <= b -1 
+    assert(isOpX<BULT>(e));
     ExprFactory &efac = e->getFactory();
     Expr lhs = e->left(), rhs = e->right();
     int bvSize = getBvSize(e);
     
-    Expr neqToZero = mk<NEQ>(rhs, bv::bvnum(0, bvSize, efac));
-    if (isTrueInModel(neqToZero ,m))
-        return neqToZero;
-    else
-        return mk<BULE>(lhs, mk<BSUB>(rhs, bv::bvnum(1, bvSize, efac)));
+    Expr neqToZero = mk<BULE>(bv::bvnum(1, bvSize, efac), rhs);
+    out.insert(neqToZero);
+    out.insert(mk<BULE>(lhs, mk<BSUB>(rhs, bv::bvnum(1, bvSize, efac))));
 }
 
-Expr ufo::bugeToBugt(Expr e, ZSolver<EZ3>::Model& m)
+void ufo::bugeToBugt(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out)
 {
     // A >= a <=> a = 0 \/ A > a-1
-    if (!isOpX<BUGE>(e))
-        return e;
+    assert(!isOpX<BUGE>(e));
     
     ExprFactory &efac = e->getFactory();
     Expr lhs = e->left(), rhs = e->right();
     int bvSize = getBvSize(e);
     
-    Expr eqToZero = mk<EQ>(rhs, bv::bvnum(0, bvSize, efac));
+    Expr eqToZero = mk<BUGT>(bv::bvnum(1, bvSize, efac), rhs);
     if (isTrueInModel(eqToZero ,m))
-        return eqToZero;
+        out.insert(eqToZero);
     else
-        return mk<BUGT>(lhs, mk<BSUB>(rhs, bv::bvnum(1, bvSize, efac)));
+        out.insert(mk<BUGT>(lhs, mk<BSUB>(rhs, bv::bvnum(1, bvSize, efac))));
 }
 
-Expr ufo::bugtToBuge(Expr e, ZSolver<EZ3>::Model& m)
+void ufo::bugtToBuge(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out)
 {
-    // b > B <=> b != 0 \/ b-1 >= B 
-    if (!isOpX<BUGT>(e))
-        return e;
-    
+    // b > B <=> b != 0 /\ b-1 >= B 
+    assert(isOpX<BUGT>(e)); 
     ExprFactory &efac = e->getFactory();
     Expr lhs = e->left(), rhs = e->right();
     int bvSize = getBvSize(e);
 
-    Expr gtZero = mk<BULE>(lhs, bv::bvnum(1, bvSize, efac));
-    if (isTrueInModel(gtZero ,m))
-        return gtZero;
-    else
-        return mk<BUGE>(mk<BSUB>(lhs, bv::bvnum(1, bvSize, efac)), rhs);
+    Expr gtZero = mk<BUGE>(lhs, bv::bvnum(1, bvSize, efac));
+    out.insert(gtZero);
+    out.insert(mk<BUGE>(mk<BSUB>(lhs, bv::bvnum(1, bvSize, efac)), rhs));
 }

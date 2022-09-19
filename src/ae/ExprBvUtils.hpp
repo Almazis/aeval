@@ -28,10 +28,10 @@ namespace ufo
   bvMultCoef oveflowChecker(ExprVector& adds, Expr var);
   bool bvTrySquashCoefs(ExprVector& adds, Expr var);
   
-  Expr buleToBult(Expr e, ZSolver<EZ3>::Model& m);
-  Expr bultToBule(Expr e, ZSolver<EZ3>::Model& m);
-  Expr bugeToBugt(Expr e, ZSolver<EZ3>::Model& m);
-  Expr bugtToBuge(Expr e, ZSolver<EZ3>::Model& m);
+  void buleToBult(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
+  void bultToBule(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
+  void bugeToBugt(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
+  void bugtToBuge(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
 
   
   template<typename Range> static Expr mkbadd(Range& terms){ 

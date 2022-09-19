@@ -31,10 +31,14 @@ namespace ufo {
     Expr divTransHelper(Expr t);
     Expr divMultTransInt(Expr t);
     Expr vecElemInitInt(Expr t);
+    Expr vecElemInitBv(Expr t);
     Expr coefApply(Expr t, int LCM);
+    Expr coefApplyBv(Expr t, int LCM);
     int coefTrans(ExprVector &sVec);
+    bvMultCoef coefTransBv(ExprVector &sVec);
+    
     Expr intQE(ExprSet sSet);
-    Expr ineqPrepare(Expr t);
+    void ineqPrepare(Expr t, ExprSet &);
     Expr bvQE(ExprSet sSet);
 
 

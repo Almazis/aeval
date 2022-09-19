@@ -1,3 +1,4 @@
+#include <cmath>
 #include "ae/MBPUtils.hpp"
 #include "common.h"
 #include "ae/BvNormalization.hpp"
@@ -111,6 +112,76 @@ Expr MBPUtils::lraMultTrans(Expr t)
   return (mk(t->op(), lhs, rhs));
 }
 
+
+/**
+ * vecElemInitInt - removes LT and GEQ, gathers multipliers to one coef
+ */
+Expr MBPUtils::vecElemInitBv(Expr t)
+{
+  // get rid of LT and GEQ
+  // if(isOpX<BULT>(t))
+  //   t = bultToBule(t, m);
+  // else if(isOpX<BUGE>(t))
+  //   t = bugeToBugt(t, m);
+  return t;
+}
+
+/**
+ * coefApplyBv -  helper for coefTransBv, equalizes coeficient with respect to LCM
+ */
+Expr MBPUtils::coefApplyBv(Expr t, int LCM)
+{
+  int bvSize = getBvSize(eVar);
+  Expr lhs = t->left(), rhs = t->right();
+  Expr newCoef = bv::bvnum(LCM, bvSize, efac);
+  if(isBmulVar(lhs, eVar))
+  {
+    Expr origCoef = getBmulVar(lhs, eVar);
+    int coef = boost::lexical_cast<int>(origCoef->left());
+    Expr rhsCoef = bv::bvnum(LCM/coef, bvSize, efac);
+    rhs = mk<BMUL>(rhsCoef, rhs);
+  }
+  else
+    rhs = mk<BMUL>(newCoef, rhs);
+  lhs = mk<BMUL>(newCoef, eVar);
+  return (mk(t->op(), lhs, rhs));
+}
+
+/**
+ * coefTransBv - handles multiplication, collects and equalizes coeficients
+ * 
+ * @sVec: input inequalities, not changed within function 
+ * @return struct of int and bool: int is LCM of the coeficients, bool is overflow identificator
+ */
+bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
+{
+  ExprVector outVec;
+  int LCM = 1;
+  set<int> multipliers;
+  // Gather LCM
+  for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
+  {
+    Expr lhs = (*ite)->left();
+    if(isBmulVar(lhs, eVar)) {
+      Expr coef = getBmulVar(lhs, eVar);
+      multipliers.insert(boost::lexical_cast<int>(coef->left()));
+    }
+  }
+  for(auto i : multipliers)
+    LCM = boost::lcm(LCM, i);
+
+  int bvSize = getBvSize(eVar);
+  int maxVal = pow(2, bvSize) - 1;
+  
+  if (LCM > maxVal)
+    return {0, true};
+  else if(LCM > 1)
+    for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
+      *ite = coefApplyBv(*ite, LCM);
+  return {LCM, false};
+}
+
+
 /**
  * bvQE - MBP procedure for bitvector arithmetics
  * @sSet: set of inequalities, not normalized
@@ -126,19 +197,20 @@ Expr MBPUtils::bvQE(ExprSet sSet)
   }
 
   // filter out everything with no eVar
-  ExprSet borders;
+  ExprVector borders;
   for (auto ne : normalizedSet) {
     if (contains(ne, eVar)) {
-      borders.insert(ne);
+      Expr initEx = vecElemInitBv(ne);
+      borders.push_back(initEx);
       normalizedSet.erase(ne);
     }
   }
 
-  // geq -> gt, lt -> leq
-  // mult trans helper
+  coefTransBv(borders);
+
   // merge borders 
 
-  return conjoin(borders, efac); // dummy
+  return conjoin(normalizedSet, efac); // dummy
 }
 
 /**
@@ -340,7 +412,7 @@ Expr MBPUtils::intQE(ExprSet sSet)
 /**
  * ineqPrepare - helper for mixQE, rewrites ineq and checks type consistency  
  */
-Expr MBPUtils::ineqPrepare(Expr t)
+void MBPUtils::ineqPrepare(Expr t, ExprSet &sameTypeSet)
 {
   if(isOpX<NEG>(t) && isOp<ComparissonOp>(t->left()))
     t = mkNeg(t->left());
@@ -355,33 +427,31 @@ Expr MBPUtils::ineqPrepare(Expr t)
 
     int intVSreal = intOrReal(t);
     if(isReal(eVar) && (intVSreal == REALTYPE))
-      return t;
+      sameTypeSet.insert(t);
     else if(isInt(eVar) && (intVSreal == INTTYPE))
-      return t;
+      sameTypeSet.insert(t);
     else if(intVSreal != NOTYPE)
       notImplemented(); // MIXTYPE not supported
   }
   else if (isOp<BvUCmp>(t))
   {
     if (!isBvArith(t))
-      return replaceAll(t, eVar, m.eval(eVar));
-    outs() << t << " I will be normalized\n";
-    if (isOpX<BULT>(t))
-      return bultToBule(t, m);
+      sameTypeSet.insert(replaceAll(t, eVar, m.eval(eVar)));
+    else if (isOpX<BULT>(t))
+      bultToBule(t, m, sameTypeSet);
     else if (isOpX<BUGT>(t))
-      return bugtToBuge(t, m);
-    return t;
+      bugtToBuge(t, m, sameTypeSet);
+    else
+      sameTypeSet.insert(t);
   }
   else
     unreachable();
-
-  return t;
 }
 
 Expr MBPUtils::mixQE(Expr s, int debug)
 {
   Expr output;
-  ExprSet outSet, temp, sameTypeSet;
+  ExprSet outSet, temp;
   if(eVar == NULL)
     return s; // nothing to eliminate
 
@@ -394,6 +464,7 @@ Expr MBPUtils::mixQE(Expr s, int debug)
   }
 
   getConj(s, temp);
+  ExprSet sameTypeSet;
   for(auto t : temp)
   {
     if (t == NULL)
@@ -402,9 +473,8 @@ Expr MBPUtils::mixQE(Expr s, int debug)
       outSet.insert(t);
       continue;
     }
-    // rewrite and check type
-    t = ineqPrepare(t);
-    sameTypeSet.insert(t);
+    // rewrite and check type, put output in sameTypeSet
+    ineqPrepare(t, sameTypeSet);
   }
 
   if(!sameTypeSet.empty())
