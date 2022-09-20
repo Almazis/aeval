@@ -26,12 +26,14 @@ namespace ufo {
     int intOrReal(Expr s);
     void laMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
                         ZSolver<EZ3>::Model &m, Expr coef = NULL);
+    void bvMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
+                        ZSolver<EZ3>::Model &m, Expr coef = NULL);
     Expr lraMultTrans(Expr t);
     Expr realQE(ExprSet sSet);
     Expr divTransHelper(Expr t);
     Expr divMultTransInt(Expr t);
     Expr vecElemInitInt(Expr t);
-    Expr vecElemInitBv(Expr t);
+    void vecElemInitBv(Expr t, ExprVector &out);
     Expr coefApply(Expr t, int LCM);
     Expr coefApplyBv(Expr t, int LCM);
     int coefTrans(ExprVector &sVec);

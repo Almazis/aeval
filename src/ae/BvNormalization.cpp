@@ -38,7 +38,6 @@ void normalizator::run_queue()
     while(!queue.empty()) {
         // pop
         Expr curr = *queue.begin();
-        outs() << "Curr: " << curr << std::endl;
         queue.erase(curr);
         Expr lhs = curr->left();
         Expr rhs = curr->right();

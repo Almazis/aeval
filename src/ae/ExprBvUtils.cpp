@@ -413,7 +413,7 @@ void ufo::bultToBule(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out)
 void ufo::bugeToBugt(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out)
 {
     // A >= a <=> a = 0 \/ A > a-1
-    assert(!isOpX<BUGE>(e));
+    assert(isOpX<BUGE>(e));
     
     ExprFactory &efac = e->getFactory();
     Expr lhs = e->left(), rhs = e->right();

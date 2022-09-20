@@ -510,6 +510,8 @@ namespace ufo
             }
           }
         }
+        // ignore for debug
+        exit(0);
         assert(0);
       }
 

@@ -94,6 +94,70 @@ void MBPUtils::laMergeBounds(
 }
 
 /**
+ * bvMergeBounds - merges lower and upper bounds
+ * 
+ * @loVec: lower bounds (y >= l, y > l), changed within function
+ * @upVec: upper bounds (y <= u, y < u), changed within function
+ * @outSet: output, a set of inequalities, which do not not contain y
+ * @m: Z3 model, must passed as param for lambda function 
+ * @coef: coefitient in front of y for LIA with multiplication constraints
+ *        in LRA case equal to NULL
+ */
+void MBPUtils::bvMergeBounds(
+  ExprVector &loVec,
+  ExprVector &upVec,
+  ExprSet &outSet,
+  ZSolver<EZ3>::Model &m,
+  Expr coef)
+{
+  if(upVec.empty() || loVec.empty())
+    return;
+
+  std::sort(loVec.begin(), loVec.end(), [&m](Expr a, Expr b) {
+    Expr ra = a->right(), rb = b->right();
+    return isOpX<TRUE>(m.eval(mk<BULT>(ra, rb)));
+  });
+
+  std::sort(upVec.begin(), upVec.end(), [&m](Expr a, Expr b) {
+    Expr ra = a->right(), rb = b->right();
+    return isOpX<TRUE>(m.eval(mk<BULT>(ra, rb)));
+  });
+
+  Expr loBound = loVec.back();
+  Expr upBound = upVec.front();
+
+  int bvSize = getBvSize(eVar);
+  int maxBv = pow(2, bvSize) - 1;
+  Expr maxVal = bv::bvnum(maxBv, bvSize, efac);
+  
+  outSet.insert(mk<BULT>(
+      mk<BUDIV>(loBound->right(), coef), mk<BUDIV>(upBound->right(), coef)));
+
+  for(auto ite = upVec.begin() + 1; ite != upVec.end(); ite++)
+  {
+    outSet.insert(mk<BULE>(upBound->right(), (*ite)->right()));
+    if (isBmulVar((*ite)->left(), eVar)) {
+      Expr c = getBmulVar((*ite)->left(), eVar);
+      outSet.insert(
+        mk<BULE>((*ite)->right(), mk<BUDIV>(maxVal, mk<BUDIV>(coef, c)))
+      );
+    }
+  }
+  
+  for(auto ite = loVec.begin(); ite != loVec.end() - 1; ite++)
+  {
+    outSet.insert(mk<BULE>((*ite)->right(), loBound->right()));
+    if (isBmulVar((*ite)->left(), eVar)) {
+      Expr c = getBmulVar((*ite)->left(), eVar);
+      outSet.insert(
+        mk<BULE>((*ite)->right(), mk<BUDIV>(maxVal, mk<BUDIV>(coef, c)))
+      );
+    }
+  }
+}
+
+
+/**
  * lraMultTrans - normalize inequality in LRA through dividing both sides
  */
 Expr MBPUtils::lraMultTrans(Expr t)
@@ -112,18 +176,22 @@ Expr MBPUtils::lraMultTrans(Expr t)
   return (mk(t->op(), lhs, rhs));
 }
 
-
 /**
  * vecElemInitInt - removes LT and GEQ, gathers multipliers to one coef
  */
-Expr MBPUtils::vecElemInitBv(Expr t)
+void MBPUtils::vecElemInitBv(Expr t, ExprVector& out)
 {
   // get rid of LT and GEQ
-  // if(isOpX<BULT>(t))
-  //   t = bultToBule(t, m);
-  // else if(isOpX<BUGE>(t))
-  //   t = bugeToBugt(t, m);
-  return t;
+  ExprSet modified;
+  if(isOpX<BULT>(t))
+    bultToBule(t, m, modified);
+  else if(isOpX<BUGE>(t))
+    bugeToBugt(t, m, modified);
+  else
+    out.push_back(t);
+
+  for (auto e : modified)
+    out.push_back(e);
 }
 
 /**
@@ -143,7 +211,8 @@ Expr MBPUtils::coefApplyBv(Expr t, int LCM)
   }
   else
     rhs = mk<BMUL>(newCoef, rhs);
-  lhs = mk<BMUL>(newCoef, eVar);
+    // lhs is not modified to keep information about original coef 
+    // it is needed in MBP rules
   return (mk(t->op(), lhs, rhs));
 }
 
@@ -155,7 +224,6 @@ Expr MBPUtils::coefApplyBv(Expr t, int LCM)
  */
 bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
 {
-  ExprVector outVec;
   int LCM = 1;
   set<int> multipliers;
   // Gather LCM
@@ -181,7 +249,6 @@ bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
   return {LCM, false};
 }
 
-
 /**
  * bvQE - MBP procedure for bitvector arithmetics
  * @sSet: set of inequalities, not normalized
@@ -197,20 +264,39 @@ Expr MBPUtils::bvQE(ExprSet sSet)
   }
 
   // filter out everything with no eVar
-  ExprVector borders;
+  ExprVector bounds;
+  ExprSet constraints;
   for (auto ne : normalizedSet) {
     if (contains(ne, eVar)) {
-      Expr initEx = vecElemInitBv(ne);
-      borders.push_back(initEx);
-      normalizedSet.erase(ne);
+      vecElemInitBv(ne, bounds);
+    } else {
+      constraints.insert(ne);
     }
   }
 
-  coefTransBv(borders);
+  bvMultCoef lcm = coefTransBv(bounds);
+  if (lcm.overflows) {
+    for (auto ite = bounds.begin(); ite != bounds.end(); ite++) {
+      constraints.insert(replaceAll(*ite, eVar, m.eval(eVar)));
+    }
+    return conjoin(constraints, efac);
+  }
 
-  // merge borders 
+  // Collecting upper & lower bound
+  ExprVector loVec, upVec;
+  for(auto ite = bounds.begin(); ite != bounds.end(); ite++)
+  {
+    if(isOpX<BUGT>(*ite) || isOpX<GEQ>(*ite))
+      loVec.push_back(*ite);
+    else if(isOpX<BULE>(*ite) || isOpX<LEQ>(*ite))
+      upVec.push_back(*ite);
+  }
 
-  return conjoin(normalizedSet, efac); // dummy
+  int bvSize = getBvSize(eVar);
+  // merge borders
+  bvMergeBounds(loVec, upVec, constraints, m, bv::bvnum(lcm.coef, bvSize, efac));
+
+  return conjoin(constraints, efac); // dummy
 }
 
 /**
@@ -355,7 +441,6 @@ Expr MBPUtils::coefApply(Expr t, int LCM)
  */
 int MBPUtils::coefTrans(ExprVector &sVec)
 {
-  ExprVector outVec;
   int LCM = 1;
   set<int> multipliers;
   // Gather LCM
