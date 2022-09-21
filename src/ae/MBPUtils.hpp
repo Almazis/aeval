@@ -40,8 +40,8 @@ namespace ufo {
     bvMultCoef coefTransBv(ExprVector &sVec);
     
     Expr intQE(ExprSet sSet);
-    void ineqPrepare(Expr t, ExprSet &);
-    Expr bvQE(ExprSet sSet);
+    void ineqPrepare(Expr t, ExprSet &sameTypeSet);
+    Expr bvQE(ExprSet& sSet);
 
 
   public:

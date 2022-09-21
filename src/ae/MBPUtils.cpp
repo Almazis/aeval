@@ -126,6 +126,8 @@ void MBPUtils::bvMergeBounds(
   Expr loBound = loVec.back();
   Expr upBound = upVec.front();
 
+  errs() << "Merging bv bounds\n";
+
   int bvSize = getBvSize(eVar);
   int maxBv = pow(2, bvSize) - 1;
   Expr maxVal = bv::bvnum(maxBv, bvSize, efac);
@@ -226,6 +228,9 @@ bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
 {
   int LCM = 1;
   set<int> multipliers;
+  int bvSize = getBvSize(eVar);
+  int maxVal = pow(2, bvSize) - 1;
+
   // Gather LCM
   for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
   {
@@ -235,17 +240,26 @@ bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
       multipliers.insert(boost::lexical_cast<int>(coef->left()));
     }
   }
+
   for(auto i : multipliers)
     LCM = boost::lcm(LCM, i);
-
-  int bvSize = getBvSize(eVar);
-  int maxVal = pow(2, bvSize) - 1;
   
   if (LCM > maxVal)
     return {0, true};
-  else if(LCM > 1)
+  else if(LCM > 1) {
+    Expr coef = bv::bvnum(LCM, bvSize, efac);
+    Expr eMaxVal = bv::bvnum(maxVal, bvSize, efac);
+    for(auto ite = sVec.begin(); ite != sVec.end(); ite++) {
+      if (isBmulVar((*ite)->left(), eVar)) {
+        Expr c = getBmulVar((*ite)->left(), eVar);
+        if (isOpX<FALSE>(m.eval(mk<BULE>((*ite)->right(), mk<BUDIV>(eMaxVal, mk<BUDIV>(coef, c))))))
+          return {0, true};
+      }
+    }
+
     for(auto ite = sVec.begin(); ite != sVec.end(); ite++)
       *ite = coefApplyBv(*ite, LCM);
+  }
   return {LCM, false};
 }
 
@@ -253,7 +267,7 @@ bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
  * bvQE - MBP procedure for bitvector arithmetics
  * @sSet: set of inequalities, not normalized
  */
-Expr MBPUtils::bvQE(ExprSet sSet)
+Expr MBPUtils::bvQE(ExprSet& sSet)
 {
   normalizator n(eVar, m);
   ExprSet normalizedSet;
@@ -286,7 +300,9 @@ Expr MBPUtils::bvQE(ExprSet sSet)
   ExprVector loVec, upVec;
   for(auto ite = bounds.begin(); ite != bounds.end(); ite++)
   {
-    if(isOpX<BUGT>(*ite) || isOpX<GEQ>(*ite))
+    if (!contains(*ite, eVar))
+      constraints.insert(*ite);
+    else if(isOpX<BUGT>(*ite) || isOpX<GEQ>(*ite))
       loVec.push_back(*ite);
     else if(isOpX<BULE>(*ite) || isOpX<LEQ>(*ite))
       upVec.push_back(*ite);

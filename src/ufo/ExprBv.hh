@@ -119,11 +119,6 @@ namespace expr
     NOP(BADD,"bvadd",FUNCTIONAL,BvArithOp)
     NOP(BSUB,"bvsub",FUNCTIONAL,BvArithOp)
     NOP(BMUL,"bvmul",FUNCTIONAL,BvArithOp)
-    NOP(BUDIV,"bvudiv",FUNCTIONAL,BvArithOp)
-    NOP(BSDIV,"bvsdiv",FUNCTIONAL,BvArithOp)
-    NOP(BUREM,"bvurem",FUNCTIONAL,BvArithOp)
-    NOP(BSREM,"bvsrem",FUNCTIONAL,BvArithOp)
-    NOP(BSMOD,"bvsmod",FUNCTIONAL,BvArithOp)
 
     NOP_BASE(BvUCmp)
     NOP(BULT,"bvult",FUNCTIONAL,BvUCmp)
@@ -138,6 +133,11 @@ namespace expr
     NOP(BSGT,"bvsgt",FUNCTIONAL,BvSCmp)
 
     NOP_BASE(BvOp)
+    NOP(BSDIV,"bvsdiv",FUNCTIONAL,BvOp)
+    NOP(BUREM,"bvurem",FUNCTIONAL,BvOp) // TODO: add supportqq
+    NOP(BUDIV,"bvudiv",FUNCTIONAL,BvOp) // TODO: add support
+    NOP(BSREM,"bvsrem",FUNCTIONAL,BvOp)
+    NOP(BSMOD,"bvsmod",FUNCTIONAL,BvOp)
     NOP(BNOT,"bvnot",FUNCTIONAL,BvOp)
     NOP(BREDAND,"bvredand",FUNCTIONAL,BvOp)
     NOP(BREDOR,"bvredor",FUNCTIONAL,BvOp)
@@ -173,7 +173,7 @@ namespace expr
       
       inline Expr extract (unsigned high, unsigned low, Expr v)
       {
-        assert (high > low);
+        assert (high >= low);
         return mk<BEXTRACT> (mkTerm<unsigned> (high, v->efac ()), 
                              mkTerm<unsigned> (low, v->efac ()), v);
       }

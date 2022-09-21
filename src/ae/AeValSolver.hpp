@@ -177,9 +177,6 @@ namespace ufo
         if(m.eval(exp) != exp)
           modelMap[exp] = mk<EQ>(exp, m.eval(exp));
 
-        if(debug)
-          MBPSanityCheck(m, pr);
-
         if(debug >= 2)
         {
           outs() << "\nmodel " << partitioning_size << ":\n";
@@ -199,6 +196,9 @@ namespace ufo
           outs() << "projection:\n";
           pprint(pr, 2);
         }
+
+        if(debug)
+          MBPSanityCheck(m, pr);
 
         for(auto it = lits.begin(); it != lits.end();)
         {
@@ -1067,6 +1067,7 @@ namespace ufo
 
     Expr getSkolemFunction (bool compact = false)
     {
+      exit(0);
       if (partitioning_size == 0)
         return mk<TRUE>(efac);
 

@@ -36,7 +36,7 @@ def main():
         args = [projDir + "/build/tools/sygus/sygussolver", "--debug", "1", t]
         t1 = time.time()
         try:
-            output = subprocess.run(args, timeout=300, stdout=subprocess.PIPE)
+            output = subprocess.run(args, timeout=30, stdout=subprocess.PIPE)
             output = output.stdout
             t2 = time.time()
             if output:

@@ -67,7 +67,7 @@ public:
         Expr prem1 = mk<BULE>(cmp.tx, mk<BSUB>(cmp.r, cmp.y));
         Expr prem2 = mk<BULE>(cmp.y, cmp.r);
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2))) {
-            outs() << "Applied add1\n";
+            // outs() << "Applied add1\n";
             out.insert(prem1);
             out.insert(prem2);
             return true;
@@ -87,7 +87,7 @@ public:
         Expr prem1 = mk<BULE>(cmp.tx, mk<BSUB>(cmp.r, cmp.y));
         Expr prem2 = mk<BULE>(mk<BNEG>(cmp.y), cmp.tx);
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2))) {
-            outs() << "Applied add2\n";
+            // outs() << "Applied add2\n";
             out.insert(prem1);
             out.insert(prem2);
             return true;
@@ -110,7 +110,7 @@ public:
         Expr prem3 = mk<BUGE>(cmp.y, bv::bvnum(1, bvSize, efac));
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)) && isOpX<TRUE>(m.eval(prem3)))
         {
-            outs() << "Applied add3\n";
+            // outs() << "Applied add3\n";
             out.insert(prem1);
             out.insert(prem2);
             out.insert(prem3);
@@ -134,7 +134,7 @@ public:
 
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)))
         {
-            outs() << "Applied add4\n";
+            // outs() << "Applied add4\n";
             out.insert(prem1);
             out.insert(prem2);
             return true;
@@ -158,7 +158,7 @@ public:
         Expr prem3 = mk<BUGE>(cmp.y, bv::bvnum(1, bvSize, efac));
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)) && isOpX<TRUE>(m.eval(prem3)))
         {
-            outs() << "Applied add5\n";
+            // outs() << "Applied add5\n";
             out.insert(prem1);
             out.insert(prem2);
             out.insert(prem3);
@@ -177,11 +177,11 @@ public:
         if (!isOpX<BUGE>(cmp.exp))
             return false;
 
-        Expr prem1 = mk<EQ>(cmp.y, bv::bvnum(0, bvSize, efac));
+        Expr prem1 = mk<BULE>(cmp.y, bv::bvnum(0, bvSize, efac));
         Expr prem2 = mk<BULE>(cmp.r, cmp.tx);
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)))
         {
-            outs() << "Applied add6\n";
+            // outs() << "Applied add6\n";
             out.insert(prem1);
             out.insert(prem2);
             return true;
@@ -205,7 +205,7 @@ public:
             mk<BNEG>(cmp.y), bv::bvnum(1, bvSize, efac)));
         if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)) && isOpX<TRUE>(m.eval(prem3)))
         {
-            outs() << "Applied add7\n";
+            // outs() << "Applied add7\n";
             out.insert(prem1);
             out.insert(prem2);
             out.insert(prem3);

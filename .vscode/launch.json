@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/tools/sygus/sygussolver",
-            "args": ["debug", "5", "${workspaceFolder}/bench/bv-conditional-inverses/find_inv_bvsge_bvadd_4bit.sl"],
+            "args": ["${workspaceFolder}/bench/bv-conditional-inverses/find_inv_ne_bvurem1_4bit.sl"],
             "environment": [{ "name": "config", "value": "Debug" }],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "CMake: build",

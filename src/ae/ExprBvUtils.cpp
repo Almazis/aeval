@@ -29,7 +29,7 @@ static void mineBvSizes(Expr exp, uintSet& sizes)
     } else if (isOp<BvArithOp>(exp) || isOp<BvOp>(exp)) {
         for (int i = 0; i < exp->arity(); i++)
             mineBvSizes(exp->arg(i), sizes);
-    } else if (bv::isBvCmp(exp)) {
+    } else if (bv::isBvCmp(exp) || isOpX<EQ>(exp) || isOpX<NEQ>(exp)) {
         mineBvSizes(exp->left(), sizes);
         mineBvSizes(exp->right(), sizes);
     } else if (isOp<BoolOp>(exp)) {
