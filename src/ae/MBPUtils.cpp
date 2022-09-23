@@ -274,7 +274,7 @@ Expr MBPUtils::bvQE(ExprSet& sSet)
   for (auto e : sSet) {
     bool success = n.normalize(e, normalizedSet);
     if (!success)
-      normalizedSet.insert(replaceAll(e, eVar, m.eval(eVar)));
+      normalizedSet.insert(replaceWithModelValue(e, eVar));
   }
 
   // filter out everything with no eVar
@@ -291,7 +291,7 @@ Expr MBPUtils::bvQE(ExprSet& sSet)
   bvMultCoef lcm = coefTransBv(bounds);
   if (lcm.overflows) {
     for (auto ite = bounds.begin(); ite != bounds.end(); ite++) {
-      constraints.insert(replaceAll(*ite, eVar, m.eval(eVar)));
+      constraints.insert(replaceWithModelValue(*ite, eVar));
     }
     return conjoin(constraints, efac);
   }
@@ -537,7 +537,7 @@ void MBPUtils::ineqPrepare(Expr t, ExprSet &sameTypeSet)
   else if (isOp<BvUCmp>(t))
   {
     if (!isBvArith(t))
-      sameTypeSet.insert(replaceAll(t, eVar, m.eval(eVar)));
+      sameTypeSet.insert(replaceWithModelValue(t, eVar));
     else if (isOpX<BULT>(t))
       bultToBule(t, m, sameTypeSet);
     else if (isOpX<BUGT>(t))

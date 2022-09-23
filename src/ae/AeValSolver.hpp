@@ -130,7 +130,8 @@ namespace ufo
       smt.assertExpr(t);
 
       boost::tribool res = true;
-
+      
+      
       while(smt.solve())
       {
         outs().flush();
@@ -164,7 +165,6 @@ namespace ufo
      */
     void getMBPandSkolem(ZSolver<EZ3>::Model &m)
     {
-      
       Expr pr = t;
       ExprMap substsMap;
       ExprMap modelMap;
@@ -510,8 +510,6 @@ namespace ufo
             }
           }
         }
-        // ignore for debug
-        exit(0);
         assert(0);
       }
 
@@ -1067,6 +1065,7 @@ namespace ufo
 
     Expr getSkolemFunction (bool compact = false)
     {
+      errs() << "In getSkolemFunction\n";
       exit(0);
       if (partitioning_size == 0)
         return mk<TRUE>(efac);

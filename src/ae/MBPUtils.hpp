@@ -14,8 +14,6 @@ namespace ufo {
     NOTYPE
   };
 
-
-
   class MBPUtils 
   {
     Expr eVar;
@@ -43,6 +41,14 @@ namespace ufo {
     void ineqPrepare(Expr t, ExprSet &sameTypeSet);
     Expr bvQE(ExprSet& sSet);
 
+    inline Expr replaceWithModelValue(Expr e1, Expr e2)
+    {
+      int bvSize = getBvSize(e2);
+      if (m.eval(e2) != e2)
+        return replaceAll(e1, e2, m.eval(e2));
+      else
+        return replaceAll(e1, e2, bv::bvnum(0, bvSize, efac));
+    }
 
   public:
     MBPUtils(Expr _var, ZSolver<EZ3>::Model& _m, SMTUtils& _u) : 
