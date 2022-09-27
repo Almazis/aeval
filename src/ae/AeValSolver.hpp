@@ -1065,7 +1065,7 @@ namespace ufo
 
     Expr getSkolemFunction (bool compact = false)
     {
-      errs() << "In getSkolemFunction\n";
+      outs() << "In getSkolemFunction\n";
       exit(0);
       if (partitioning_size == 0)
         return mk<TRUE>(efac);
