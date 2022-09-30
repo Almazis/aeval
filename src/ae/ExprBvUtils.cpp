@@ -207,6 +207,47 @@ Expr ufo::getBmulVar(Expr e, Expr var)
 
 }
 
+bool ufo::isBdivVar(Expr e, Expr var)
+{
+    if (!isOpX<BUDIV>(e)) return false;
+    else if (bv::is_bvnum(e->right()) && var == e->left()) return true;
+    return false;
+}
+
+bool ufo::isBmulBdivVar(Expr e, Expr var)
+{
+    if (!isOpX<BMUL>(e))
+        return false;
+    else if (e->arity() != 2)
+        return false;
+    else if (bv::is_bvnum(e->right()) && contains(e->left(), var))
+        return isBdivVar(e->left(), var);
+    else if (bv::is_bvnum(e->left()) && contains(e->right(), var))
+        return isBdivVar(e->left(), var);
+    else
+        return false;
+}
+
+Expr ufo::mkBmul(Expr e, Expr c)
+{
+    assert(bv::is_bvnum(c));
+    if (!isOpX<BMUL>(e))
+        return mk<BMUL>(e, c);
+    
+    unsigned bvSize = getBvSize(c);
+    int k = lexical_cast<int>(bv::toMpz(c));
+    ExprVector rem;
+    for (unsigned i = 0; i < e->arity(); i++)
+    {
+        if (bv::is_bvnum(e->arg(i)))
+            k *= lexical_cast<int>(bv::toMpz(e->arg(i)));
+        else
+            rem.push_back(e->arg(i));
+    }
+    rem.push_back(bv::bvnum(k, bvSize, c->getFactory()));
+    return mknary<BMUL>(rem);
+}
+
 Expr ufo::bvAdditiveInverse(Expr e)
 {
     if (isOpX<BADD>(e))

@@ -699,7 +699,7 @@ struct BasicExprUnmarshal
         return it->second;
     }
 
-    Expr e;
+    Expr e, l, r;
     ExprVector args;
     for(size_t i = 0; i < (size_t)Z3_get_app_num_args(ctx, app); i++)
       args.push_back(unmarshal(
@@ -870,6 +870,18 @@ struct BasicExprUnmarshal
       break;
     case Z3_OP_CONCAT:
       e = mknary<BCONCAT>(args.begin(), args.end());
+      break;
+    case Z3_OP_BUDIV_I:
+      // l = mknary<BUDIV>(args.begin(), args.end());
+      // r = mk<NEQ>(*args.end(), bv::bvnum(0, 4, efac));
+      // e = mk<AND> (l, r);
+      e = mknary<BUDIV>(args.begin(), args.end());
+      break;
+    case Z3_OP_BUREM_I:
+      // l = mknary<BUREM>(args.begin(), args.end());
+      // r = mk<NEQ>(*args.end(), bv::bvnum(0, 4, efac));
+      // e = mk<AND> (l, r);
+      e = mknary<BUREM>(args.begin(), args.end());
       break;
     default:
       return U::unmarshal(z, efac, cache, seen);

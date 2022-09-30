@@ -83,18 +83,19 @@ void normalizator::run_queue()
                 }
                 enqueue(next);
             } else {
-                CmpSplitter splitter(curr, var);
                 ExprSet toQueue;
                 bool res = false;
 
-                while (splitter.canSplit()) {
-                    splitedCmp s;
+                // firstly, try div rules
+                splitedCmp s{curr, NULL, NULL, NULL};
+                for (auto r : div_rules)
+                    res = r->apply(s, toQueue);
+
+                CmpSplitter splitter(curr, var);
+                while (splitter.canSplit() && !res) {
                     splitter.split(s);
-                    for (auto r : add_rules) {
+                    for (auto r : add_rules)
                         res = r->apply(s, toQueue);
-                        if(res) break;
-                    }
-                    if(res) break;
                 }
 
                 if (!res) {

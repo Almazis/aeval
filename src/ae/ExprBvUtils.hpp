@@ -23,6 +23,9 @@ namespace ufo
   Expr bvFlipCmp(Expr fla, Expr lhs, Expr rhs);
   bool isBmulVar(Expr e, Expr var);
   Expr getBmulVar(Expr e, Expr var);
+  Expr mkBmul(Expr e, Expr c);
+  bool isBdivVar(Expr e, Expr var);
+  bool isBmulBdivVar(Expr e, Expr var);
   bool isBvArith(Expr e);
   void getBvMultVars(Expr e, Expr var, ExprVector& outs);
   bvMultCoef oveflowChecker(ExprVector& adds, Expr var);

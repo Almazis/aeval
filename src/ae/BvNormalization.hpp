@@ -304,6 +304,134 @@ public:
     }
 };
 
+class div1 : public rw_rule {
+public:
+    div1(Expr _var, ZSolver<EZ3>::Model& _m) : rw_rule(_var, _m) {};
+
+    // tx div y <= r ---> tx <= (r+1)*y - 1 && r < (2^n - 1) div y
+    bool apply(splitedCmp cmp, ExprSet &out) override {
+        Expr l = cmp.exp->left();
+        if (!isOpX<BULE>(cmp.exp))
+            return false;
+        if(!isBdivVar(l, var) || contains(cmp.r, var))
+            return false;
+
+        Expr tx = l->left();
+        Expr y = l->right();
+        int c = pow(2, bvSize) - 1;
+        Expr prem = mk<BULT>(cmp.r, mk<BUDIV>(bv::bvnum(c, bvSize, efac), y));
+        if(isOpX<TRUE>(m.eval(prem)))
+        {
+            Expr bvOne = bv::bvnum(1, bvSize, efac);
+            Expr xPart = mk<BULE>(tx, mk<BSUB>(mk<BMUL>(mk<BADD>(cmp.r, bvOne), y), bvOne));
+            out.insert(prem);
+            out.insert(xPart);
+            return true;
+        }
+        return false;
+    }
+};
+
+class div2 : public rw_rule {
+public:    
+    div2(Expr _var, ZSolver<EZ3>::Model& _m) : rw_rule(_var, _m) {};
+
+    // tx div y <= r ---> tx <= (r+1)*y - 1 && r < (2^n - 1) div y
+    bool apply(splitedCmp cmp, ExprSet &out) override {
+        Expr l = cmp.exp->left();
+        if (!isOpX<BUGE>(cmp.exp))
+            return false;
+        if(!isBdivVar(l, var) || contains(cmp.r, var))
+            return false;
+
+        Expr tx = l->left();
+        Expr y = l->right();        
+        int c = pow(2, bvSize) - 1;
+        Expr prem = mk<BULT>(cmp.r, mk<BUDIV>(bv::bvnum(c, bvSize, efac), y));
+        if(isOpX<TRUE>(m.eval(prem)))
+        {
+            Expr bvOne = bv::bvnum(1, bvSize, efac);
+            Expr xPart = mk<BUGE>(tx, mk<BSUB>(mk<BMUL>(mk<BADD>(cmp.r, bvOne), y), bvOne));
+            out.insert(prem);
+            out.insert(xPart);
+            return true;
+        }
+        return false;
+    }
+};
+
+class div3 : public rw_rule {
+public:
+    div3(Expr _var, ZSolver<EZ3>::Model& _m) : rw_rule(_var, _m) {};
+
+    // (tx div y) * a <= r ---> tx * a <= (r+1)*y -1 && d < (2^n - 1) div y
+    bool apply(splitedCmp cmp, ExprSet &out) override {
+        Expr l = cmp.exp->left();
+        if (!isOpX<BULE>(cmp.exp))
+            return false;
+        if(!isBmulBdivVar(l, var) || contains(cmp.r, var))
+            return false;
+        
+        Expr a, xdiv;
+        if (bv::is_bvnum(l->right())) {
+            a = l->right();
+            xdiv = l->left();
+        } else {
+            a = l->left();
+            xdiv = l->right();
+        }
+
+        int c = pow(2, bvSize) - 1;
+        Expr bvOne = bv::bvnum(1, bvSize, efac);
+        Expr prem1 = mk<BULT>(cmp.r, mk<BUDIV>(bv::bvnum(c, bvSize, efac), xdiv->right()));
+        Expr mula = mkBmul(xdiv->left(), a);
+        Expr prem2 = mk<BULE>(mula, mk<BSUB>(mk<BMUL>(mk<BADD>(cmp.r, bvOne), xdiv->right()), bvOne));
+        if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)))
+        {
+            out.insert(prem1);
+            out.insert(prem2);
+            return true;
+        }
+        return false;
+    }
+};
+
+class div4 : public rw_rule {
+public:
+    div4(Expr _var, ZSolver<EZ3>::Model& _m) : rw_rule(_var, _m) {};
+
+    // (tx div y) * a >= r ---> tx * a >= (r+1)*y -1 && d < (2^n - 1) div y
+    bool apply(splitedCmp cmp, ExprSet &out) override {
+        Expr l = cmp.exp->left();
+        if (!isOpX<BUGE>(cmp.exp))
+            return false;
+        if(!isBmulBdivVar(l, var) || contains(cmp.r, var))
+            return false;
+        
+        Expr a, xdiv;
+        if (bv::is_bvnum(l->right())) {
+            a = l->right();
+            xdiv = l->left();
+        } else {
+            a = l->left();
+            xdiv = l->right();
+        }
+
+        int c = pow(2, bvSize) - 1;
+        Expr bvOne = bv::bvnum(1, bvSize, efac);
+        Expr prem1 = mk<BULT>(cmp.r, mk<BUDIV>(bv::bvnum(c, bvSize, efac), xdiv->right()));
+        Expr mula = mkBmul(xdiv->left(), a);
+        Expr prem2 = mk<BUGE>(mula, mk<BSUB>(mk<BMUL>(mk<BADD>(cmp.r, bvOne), xdiv->right()), bvOne));
+        if(isOpX<TRUE>(m.eval(prem1)) && isOpX<TRUE>(m.eval(prem2)))
+        {
+            out.insert(prem1);
+            out.insert(prem2);
+            return true;
+        }
+        return false;
+    }
+};
+
 class normalizator {
     bool failed = false;
     Expr var;
@@ -314,6 +442,7 @@ class normalizator {
     
     std::vector<rw_rule *> add_rules; // vector of add rules
     std::vector<rw_rule *> both_rules; // vector of both rules
+    std::vector<rw_rule *> div_rules; // vector of div rules
 
     void enqueue(Expr e) {queue.insert(e);}
     void run_queue();
@@ -330,6 +459,11 @@ public:
         add_rules.push_back(new add5(_var, _m));
         add_rules.push_back(new add6(_var, _m));
         add_rules.push_back(new add7(_var, _m));
+
+        div_rules.push_back(new div1(_var, _m));
+        div_rules.push_back(new div2(_var, _m));
+        div_rules.push_back(new div3(_var, _m));
+        div_rules.push_back(new div4(_var, _m));    
 
         both_rules.push_back(new both1(_var, _m));
         both_rules.push_back(new both2(_var, _m));
