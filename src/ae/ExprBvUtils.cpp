@@ -144,11 +144,26 @@ Expr rewriteDivisible(Expr exp)
     return disjoin(disjs, efac);
 }
 
-Expr rewriteRem(Expr exp)
+struct rewriterBurem
 {
-    Expr lhs = exp->left(), rhs = exp->right();
-    Expr r = mk<BMUL>(mk<BUDIV>(lhs, rhs), rhs);
-    return mk<BSUB>(lhs, r);
+    rewriterBurem () {};
+
+    Expr operator() (Expr exp)
+    {
+        if (!isOpX<BUREM>(exp))
+            return exp;
+        
+        Expr lhs = exp->left(), rhs = exp->right();
+        Expr r = mk<BMUL>(mk<BUDIV>(lhs, rhs), rhs);
+        return mk<BSUB>(lhs, r);
+    }
+};
+
+Expr ufo::rewriteBurem (Expr exp)
+{
+    if (containsOp<FORALL>(exp) || containsOp<EXISTS>(exp)) return exp;
+    RW<rewriterBurem> rw(new rewriterBurem());
+    return dagVisit (rw, exp);
 }
 
 Expr ufo::bvReBuildCmp(Expr exp, Expr lhs, Expr rhs)

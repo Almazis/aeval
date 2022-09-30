@@ -119,6 +119,8 @@ namespace expr
     NOP(BADD,"bvadd",FUNCTIONAL,BvArithOp)
     NOP(BSUB,"bvsub",FUNCTIONAL,BvArithOp)
     NOP(BMUL,"bvmul",FUNCTIONAL,BvArithOp)
+    NOP(BUREM,"bvurem",FUNCTIONAL,BvArithOp)
+    NOP(BUDIV,"bvudiv",FUNCTIONAL,BvArithOp)
 
     NOP_BASE(BvUCmp)
     NOP(BULT,"bvult",FUNCTIONAL,BvUCmp)
@@ -134,8 +136,7 @@ namespace expr
 
     NOP_BASE(BvOp)
     NOP(BSDIV,"bvsdiv",FUNCTIONAL,BvOp)
-    NOP(BUREM,"bvurem",FUNCTIONAL,BvOp) // TODO: add supportqq
-    NOP(BUDIV,"bvudiv",FUNCTIONAL,BvOp) // TODO: add support
+
     NOP(BSREM,"bvsrem",FUNCTIONAL,BvOp)
     NOP(BSMOD,"bvsmod",FUNCTIONAL,BvOp)
     NOP(BNOT,"bvnot",FUNCTIONAL,BvOp)

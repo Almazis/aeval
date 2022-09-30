@@ -538,12 +538,16 @@ void MBPUtils::ineqPrepare(Expr t, ExprSet &sameTypeSet)
   {
     if (!isBvArith(t))
       sameTypeSet.insert(replaceWithModelValue(t, eVar));
-    else if (isOpX<BULT>(t))
-      bultToBule(t, m, sameTypeSet);
-    else if (isOpX<BUGT>(t))
-      bugtToBuge(t, m, sameTypeSet);
     else
-      sameTypeSet.insert(t);
+    {
+      t = rewriteBurem(t);
+      if (isOpX<BULT>(t))
+        bultToBule(t, m, sameTypeSet);
+      else if (isOpX<BUGT>(t))
+        bugtToBuge(t, m, sameTypeSet);
+      else
+        sameTypeSet.insert(t);
+    }
   }
   else
     unreachable();

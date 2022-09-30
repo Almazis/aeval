@@ -45,3 +45,19 @@ TEST_CASE("Get badd terms", "[Bv]") {
         outs() << t << endl;
     // }    
 }
+
+TEST_CASE("Rewrite burem", "[Bv]") {
+    ExprFactory efac;
+    ExprVector terms;
+    unsigned size = 4;
+    // for(unsigned size = 1; size <= 64; size++) {
+    Expr bvec1 = bv::bvnum(1, size, efac);
+    Expr bvec2 = bv::bvnum(2, size, efac);
+    Expr e = mk<BUREM>(bvec1, bvec2);
+    Expr e1 = mk<BUREM>(bvec2, e);
+    Expr e2 = mk<BUREM>(bvec1, e1);
+    
+    
+    outs() << e2 << endl;
+    outs() << rewriteBurem(e2) << endl;
+}

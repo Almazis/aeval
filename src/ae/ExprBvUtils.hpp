@@ -35,7 +35,7 @@ namespace ufo
   void bultToBule(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
   void bugeToBugt(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
   void bugtToBuge(Expr e, ZSolver<EZ3>::Model& m, ExprSet& out);
-
+  Expr rewriteBurem (Expr exp);
   
   template<typename Range> static Expr mkbadd(Range& terms){ 
     assert(terms.size() > 0);
@@ -43,6 +43,8 @@ namespace ufo
       (terms.size() == 1) ? *terms.begin() :
       mknary<BADD>(terms);
   }
+
+
 }
 #endif
 
