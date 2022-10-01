@@ -27,7 +27,7 @@ namespace ufo {
     void bvMergeBounds(ExprVector &loVec, ExprVector &upVec, ExprSet &outSet,
                         ZSolver<EZ3>::Model &m, Expr coef = NULL);
     Expr lraMultTrans(Expr t);
-    Expr realQE(ExprSet sSet);
+    Expr realQE(ExprSet& sSet);
     Expr divTransHelper(Expr t);
     Expr divMultTransInt(Expr t);
     Expr vecElemInitInt(Expr t);
@@ -37,9 +37,9 @@ namespace ufo {
     int coefTrans(ExprVector &sVec);
     bvMultCoef coefTransBv(ExprVector &sVec);
     
-    Expr intQE(ExprSet sSet);
+    Expr intQE(ExprSet &sSet);
     void ineqPrepare(Expr t, ExprSet &sameTypeSet);
-    Expr bvQE(ExprSet& sSet);
+    Expr bvQE(ExprSet &sSet, Expr s);
 
     inline Expr replaceWithModelValue(Expr e1, Expr e2)
     {

@@ -126,8 +126,6 @@ void MBPUtils::bvMergeBounds(
   Expr loBound = loVec.back();
   Expr upBound = upVec.front();
 
-  errs() << "Merging bv bounds\n";
-
   int bvSize = getBvSize(eVar);
   int maxBv = pow(2, bvSize) - 1;
   Expr maxVal = bv::bvnum(maxBv, bvSize, efac);
@@ -267,7 +265,7 @@ bvMultCoef MBPUtils::coefTransBv(ExprVector &sVec)
  * bvQE - MBP procedure for bitvector arithmetics
  * @sSet: set of inequalities, not normalized
  */
-Expr MBPUtils::bvQE(ExprSet& sSet)
+Expr MBPUtils::bvQE(ExprSet& sSet, Expr s)
 {
   normalizator n(eVar, m);
   ExprSet normalizedSet;
@@ -312,14 +310,29 @@ Expr MBPUtils::bvQE(ExprSet& sSet)
   // merge borders
   bvMergeBounds(loVec, upVec, constraints, m, bv::bvnum(lcm.coef, bvSize, efac));
 
-  return conjoin(constraints, efac); // dummy
+  // Lazy MBP
+  if (u.implies(conjoin(constraints, efac), mk<EXISTS>(eVar->last(), s)))
+    return conjoin(constraints, efac);
+  
+  for (auto b : bounds) {
+    if (!contains(b, eVar))
+      continue;
+    Expr lhs = lcm.coef == 1 ? eVar 
+                             : mk<BMUL>(bv::bvnum(lcm.coef, bvSize, efac), eVar);
+    Expr subst = mk(b->op(), lhs, b->right());
+    constraints.insert(replaceWithModelValue(subst, eVar));
+    if (u.implies(conjoin(constraints, efac), mk<EXISTS>(eVar->last(), s)))
+      break;
+  }
+
+  return conjoin(constraints, efac);
 }
 
 /**
  * realQE - MBP procedure for LRA
  * @sSet: set of inequalities with eVar on lhs
  */
-Expr MBPUtils::realQE(ExprSet sSet)
+Expr MBPUtils::realQE(ExprSet& sSet)
 {
   ExprVector sVec, upVec, loVec;
 
@@ -482,7 +495,7 @@ int MBPUtils::coefTrans(ExprVector &sVec)
  * intQE - MBP procedure for LIA
  * @sSet: set of inequalities with eVar on lhs
  */
-Expr MBPUtils::intQE(ExprSet sSet)
+Expr MBPUtils::intQE(ExprSet &sSet)
 {
   Expr coefExpr = NULL;
   ExprSet outSet;
@@ -583,7 +596,7 @@ Expr MBPUtils::mixQE(Expr s, int debug)
   }
 
   if(!sameTypeSet.empty())
-    outSet.insert(isBv(eVar) ? bvQE(sameTypeSet) :
+    outSet.insert(isBv(eVar) ? bvQE(sameTypeSet, s) :
                   isReal(eVar) ? realQE(sameTypeSet) :
                   intQE(sameTypeSet));
 
