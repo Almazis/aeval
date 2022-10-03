@@ -6,13 +6,6 @@
 
 using namespace ufo;
 
-static inline bool addIsApplicable(Expr exp, Expr eVar)
-{
-  Expr lhs = exp->left();
-  Expr rhs = exp->right();
-  return isOp<BvUCmp>(exp) && contains(lhs, eVar) && !contains(rhs, eVar);
-}
-
 CmpSplitter::CmpSplitter(Expr _exp, Expr var) : exp(_exp), r(exp->right())
 {
   assert(isOp<BvUCmp>(exp));

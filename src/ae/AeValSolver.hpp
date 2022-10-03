@@ -132,8 +132,7 @@ namespace ufo
       smt.assertExpr(t);
 
       boost::tribool res = true;
-      
-      
+
       while(smt.solve())
       {
         outs().flush();
@@ -1069,8 +1068,6 @@ namespace ufo
 
     Expr getSkolemFunction (bool compact = false)
     {
-      outs() << "In getSkolemFunction\n";
-      exit(0);
       if (partitioning_size == 0)
         return mk<TRUE>(efac);
 
