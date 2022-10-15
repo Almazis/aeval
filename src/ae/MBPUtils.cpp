@@ -4,35 +4,6 @@
 using namespace ufo;
 
 /**
- * intOrReal - checks expression type
- */
-int intOrReal(Expr s)
-{
-  ExprVector sVec;
-  bool realType = false, intType = false;
-  filter(s, bind::IsNumber(), back_inserter(sVec));
-  filter(s, bind::IsConst(), back_inserter(sVec));
-  for(auto ite : sVec)
-  {
-    if(bind::isIntConst(ite) || isOpX<MPZ>(ite))
-      intType = true;
-    else if(bind::isRealConst(ite) || isOpX<MPQ>(ite))
-      realType = true;
-    else
-      assert(false); // Error identifying
-  }
-
-  if(realType && intType)
-    return MIXTYPE; // a bad case
-  else if(realType)
-    return REALTYPE;
-  else if(intType)
-    return INTTYPE;
-  else
-    return NOTYPE; // t == true
-}
-
-/**
  * laMergeBounds - merges lower and upper bounds
  * 
  * @loVec: lower bounds (y >= l, y > l), changed within function
@@ -333,8 +304,11 @@ Expr ineqPrepare(Expr t, Expr eVar)
   else if(isInt(eVar) && (intVSreal == INTTYPE))
     return t;
   else if(intVSreal != NOTYPE)
+  {
+    // t = tryToRemoveMixType(t);
+    outs() << "t = " << t << "\n" << "intOrReal: " <<intOrReal(t) <<"\n";
     notImplemented();
-  
+  }
   return t;
 }
 

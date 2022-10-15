@@ -1267,9 +1267,6 @@ namespace ufo
       minusSets(ex_qvars, fa_qvars);
     }
 
-    s = convertIntsToReals<DIV>(s);
-    t = convertIntsToReals<DIV>(t);
-
     if(debug >= 3)
     {
       outs() << "s part: " << s << "\n";
