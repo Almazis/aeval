@@ -284,20 +284,22 @@ Expr intQE(ExprSet sSet, Expr eVar, ZSolver<EZ3>::Model &m)
  */
 Expr ineqPrepare(Expr t, Expr eVar)
 {
+  int intVSreal = intOrReal(t);
   if(isOpX<NEG>(t) && isOp<ComparissonOp>(t->left()))
     t = mkNeg(t->left());
   if(isOp<ComparissonOp>(t))
   {
+    Expr zero = intVSreal == REALTYPE ? mkMPQ("0", eVar->efac())
+                                      : mkMPZ(0, eVar->efac());
     // rewrite so that y is on lhs, with positive coef
     t = simplifyArithm(reBuildCmp(
       t,
       mk<PLUS>(t->arg(0), additiveInverse(t->arg(1))),
-      mkMPZ(0, eVar->efac())));
+      zero));
     t = ineqSimplifier(eVar, t);
   }
   else
     unreachable();
-  int intVSreal = intOrReal(t);
 
   if(isReal(eVar) && (intVSreal == REALTYPE))
     return t;

@@ -2369,8 +2369,8 @@ namespace ufo
         Expr e = exp->arg(i);
         if (isOpX<MPZ>(e))
           e = mkTerm (mpq_class (lexical_cast<string>(e)), exp->getFactory());
-        // else if (bind::isIntConst(exp)) 
-        //   e = realConst(fname(exp));
+        else if (bind::isIntConst(e)) 
+          e = realConst(fname(e));
         args.push_back(e);
       }
       return mknary(exp->op(), args.begin(), args.end());
@@ -4588,9 +4588,9 @@ namespace ufo
 
   static Expr tryToRemoveMixType(Expr exp)
   {
-    if (intOrReal(exp) != MIXTYPE)
+    if (intOrReal(exp) != MIXTYPE) 
       return exp;
-    
+
     return convertIntsToReals(exp);
   }
 
