@@ -532,6 +532,8 @@ namespace ufo
     return e;
   }
 
+  static Expr realSimplifyMult(Expr fla);
+
   /**
    *  Helper used in ineqMover
    */
@@ -539,6 +541,8 @@ namespace ufo
     Expr l = e->left();
     Expr r = e->right();
     ExprVector orig_lhs, orig_rhs, lhs, rhs;
+    ExprVector realCoefs;
+    outs() << "rewriteHelperM e = " << e << "\n";
 
     // parse
 
@@ -568,6 +572,20 @@ namespace ufo
           coef -= lexical_cast<cpp_int>(subExpr->left());
           found = true;
         }
+        else if (isOpX<MULT>(subExpr) && 2 == subExpr->arity() && isOpX<MPQ>(subExpr->left()) && subExpr->right() == var) {
+          ExprVector tmp;
+          int skipped = 0;
+          for (int i = 0; i < (*it)->arity(); ++i)
+          {  
+            if (subExpr->arg(i) != var)
+              tmp.push_back(subExpr->arg(i));
+            else
+              skipped++;
+          }
+          assert(skipped == 1);
+          realCoefs.push_back(mk<UN_MINUS>(mkmult(tmp, var->efac())));
+          found = true;
+        }
         else if (isOp<IDIV>(subExpr) && 2 == subExpr->arity() && isOpX<MPZ>(subExpr->right()) && subExpr->left() == var) {
           coef -= rational<cpp_int>(1, lexical_cast<cpp_int>(subExpr->right()));
           found = true;
@@ -575,6 +593,20 @@ namespace ufo
       }
       if (isOpX<MULT>(*it) && 2 == (*it)->arity() && isOpX<MPZ>((*it)->left()) && (*it)->right() == var) {
         coef += lexical_cast<cpp_int>((*it)->left());
+        found = true;
+      }
+      else if (isOpX<MULT>(*it) && isRealConst(var)) {
+        ExprVector tmp;
+        int skipped = 0;
+        for (int i = 0; i < (*it)->arity(); ++i)
+        {  
+          if ((*it)->arg(i) != var)
+            tmp.push_back((*it)->arg(i));
+          else
+            skipped++;
+        }
+        assert(skipped == 1);
+        realCoefs.push_back(mkmult(tmp, var->efac()));
         found = true;
       }
       if (isOp<IDIV>(*it) && 2 == (*it)->arity() && isOpX<MPZ>((*it)->right()) && (*it)->left() == var) {
@@ -594,7 +626,13 @@ namespace ufo
     }
 
     r = mkplus(rhs, e->getFactory());
-  
+    if (!realCoefs.empty())
+    {
+      l = mkplus(realCoefs, var->efac());
+      l = mk<MULT>(l, var);
+      outs() << "transformed e: " << e << "to :" << mk<T>(l,r);
+      return mk<T>(l,r);
+    }
     if (coef == 0){
       l = mkMPZ (0, e->getFactory());
     } else if (coef == 1){
@@ -2211,6 +2249,100 @@ namespace ufo
   inline static bool isBool(Expr e)
   {
     return typeOf(e) == mk<BOOL_TY>(e->getFactory());
+  }
+
+  static Expr realRewriteDivs(Expr fla, Expr var)
+  {
+    assert (isOp<ComparissonOp>(fla));
+    ExprFactory& efac = var->efac();
+    ExprVector plusOpsLeft;
+    ExprVector plusOpsRight;
+    int minusOps = 0;
+    
+    getAddTerm(fla->left(), plusOpsLeft);
+    getAddTerm(fla->right(), plusOpsRight);
+
+    ExprSet divs;
+    for (auto a : plusOpsLeft)
+      if(isOpX<DIV>(a))
+      {
+        divs.insert(a->right());
+        if(lexical_cast<string>(a->right())[0] == '-')
+          minusOps++;
+      }
+    for (auto a : plusOpsRight)
+      if(isOpX<DIV>(a)) 
+      {
+        divs.insert(a->right());
+        if(lexical_cast<string>(a->right())[0] == '-')
+          minusOps++;
+      }      
+   
+    for(auto ite = plusOpsLeft.begin(); ite != plusOpsLeft.end(); ite++)
+    {
+      if (isOpX<DIV>(*ite))
+      {
+        Expr d = (*ite)->right();
+        divs.erase(d);
+        *ite = mk<MULT>((*ite)->left(), mkmult(divs, efac));
+        divs.insert(d);
+      }
+      else
+        *ite = mk<MULT>(*ite, mkmult(divs, efac));
+    }
+    for(auto ite = plusOpsRight.begin(); ite != plusOpsRight.end(); ite++)
+    {
+      if (isOpX<DIV>(*ite))
+      {
+        Expr d = (*ite)->right();
+        divs.erase(d);
+        *ite = mk<MULT>((*ite)->right(), mkmult(divs, efac));
+        divs.insert(d);
+      }
+      else
+        *ite = mk<MULT>(*ite, mkmult(divs, efac));
+    }
+    if (minusOps % 2 == 0)
+      return (mk(fla->op(), mkplus(plusOpsLeft, efac), mkplus(plusOpsRight,efac)));
+    return reBuildCmpSym(fla, mkplus(plusOpsRight, efac), mkplus(plusOpsLeft, efac));
+  }
+
+  static void realMultHelper(Expr fla, ExprVector& mults)
+  {
+    if (!isOpX<MULT>(fla))
+      mults.push_back(fla);
+    else
+    {
+      for (int i = 0; i < fla->arity(); i++)
+        realMultHelper(fla->arg(i), mults);
+    }
+  }
+
+  static Expr realSimplifyMult(Expr fla)
+  {
+    ExprFactory& efac = fla->getFactory();
+    ExprVector plusOpsLeft;
+    ExprVector plusOpsRight;
+    getAddTerm(fla->left(), plusOpsLeft);
+    getAddTerm(fla->right(), plusOpsRight);
+
+    for(auto ite = plusOpsRight.begin(); ite != plusOpsRight.end(); ite++)
+    {
+      if (!isOpX<MULT>(*ite))
+        continue;
+      ExprVector mults;
+      realMultHelper(*ite, mults);
+      *ite = mkmult(mults, efac);
+    }
+    for(auto ite = plusOpsLeft.begin(); ite != plusOpsLeft.end(); ite++)
+    {
+      if (!isOpX<MULT>(*ite))
+        continue;
+      ExprVector mults;
+      realMultHelper(*ite, mults);
+      *ite = mkmult(mults, efac);
+    }
+    return mk(fla->op(), mkplus(plusOpsLeft, efac), mkplus(plusOpsRight, efac));
   }
 
   inline Expr rewriteDivConstraints(Expr fla)

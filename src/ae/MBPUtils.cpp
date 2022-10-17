@@ -42,6 +42,20 @@ void laMergeBounds(
     return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
   });
 
+  outs() << "upVec: ";
+  for (auto a: upVec)
+  {
+    outs() << a << " : " << m.eval(a->right()) << ";";
+  }
+  outs() << endl;
+
+  outs() << "loVec: ";
+  for (auto a: loVec)
+  {
+    outs() << a << " : " << m.eval(a->right()) << ";";
+  }
+  outs() << endl;
+
   Expr loBound = loVec.back();
   Expr upBound = upVec.front();
 
@@ -66,18 +80,30 @@ void laMergeBounds(
  */
 Expr lraMultTrans(Expr t, Expr eVar)
 {
+  // outs() << "exp: " << t << "eVar: " << eVar << "\n";
   Expr lhs = t->left(), rhs = t->right();
+  unsigned minOps = 0;
   while(isOp<MULT>(lhs)) //until lhs is no longer *
   {
-    Expr lOperand = lhs->left(), rOperand = lhs->right();
-    bool yOnTheLeft = contains(lOperand, eVar);
-
-    rhs = mk<DIV>(rhs, yOnTheLeft ? rOperand : lOperand);
-    lhs = yOnTheLeft ? lOperand : rOperand;
+    Expr varOperand;
+    for (int i = 0; i < lhs->arity(); i++)
+    {
+      if (contains(lhs->arg(i), eVar))
+        varOperand = lhs->arg(i);
+      else 
+      {
+        if (lexical_cast<string>(lhs->arg(i))[0] == '-')
+          minOps++;
+        rhs = mk<DIV>(rhs, lhs->arg(i));
+      }
+    }
+    lhs = varOperand;
     if (!contains(lhs, eVar))
       unreachable();
   }
-  return (mk(t->op(), lhs, rhs));
+  if (minOps % 2 == 0)
+    return (mk(t->op(), lhs, rhs));
+  return reBuildCmpSym(t, rhs, lhs);
 }
 
 /**
@@ -289,13 +315,19 @@ Expr ineqPrepare(Expr t, Expr eVar)
     t = mkNeg(t->left());
   if(isOp<ComparissonOp>(t))
   {
-    Expr zero = intVSreal == REALTYPE ? mkMPQ("0", eVar->efac())
-                                      : mkMPZ(0, eVar->efac());
+    Expr zero = intVSreal == INTTYPE ? mkMPZ(0, eVar->efac())
+                                     : mkMPQ("0", eVar->efac());
     // rewrite so that y is on lhs, with positive coef
     t = simplifyArithm(reBuildCmp(
       t,
       mk<PLUS>(t->arg(0), additiveInverse(t->arg(1))),
       zero));
+    if (isRealConst(eVar)) {
+      outs() << "Before: " << t << "\n";
+      t = realRewriteDivs(t, eVar);
+      t = realSimplifyMult(t);
+      outs() << "After: " << t << "\n";
+    }
     t = ineqSimplifier(eVar, t);
   }
   else
@@ -307,8 +339,6 @@ Expr ineqPrepare(Expr t, Expr eVar)
     return t;
   else if(intVSreal != NOTYPE)
   {
-    // t = tryToRemoveMixType(t);
-    outs() << "t = " << t << "\n" << "intOrReal: " <<intOrReal(t) <<"\n";
     notImplemented();
   }
   return t;

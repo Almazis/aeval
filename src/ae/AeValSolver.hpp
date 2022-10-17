@@ -173,12 +173,13 @@ namespace ufo
       {
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
+        outs() << "Lits: { \n";
+        for (auto a: lits)
+          outs() << a << "\n";
+        outs() << "}\n";
         pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, m, u, debug));
         if(m.eval(exp) != exp)
           modelMap[exp] = mk<EQ>(exp, m.eval(exp));
-
-        if(debug)
-          MBPSanityCheck(m, pr);
 
         if(debug >= 2)
         {
@@ -199,6 +200,9 @@ namespace ufo
           outs() << "projection:\n";
           pprint(pr, 2);
         }
+
+        if(debug)
+          MBPSanityCheck(m, pr);
 
         for(auto it = lits.begin(); it != lits.end();)
         {
