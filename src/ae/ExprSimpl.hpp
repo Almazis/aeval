@@ -542,7 +542,6 @@ namespace ufo
     Expr r = e->right();
     ExprVector orig_lhs, orig_rhs, lhs, rhs;
     ExprVector realCoefs;
-    outs() << "rewriteHelperM e = " << e << "\n";
 
     // parse
 
@@ -597,7 +596,6 @@ namespace ufo
       }
       else if (isOpX<MULT>(*it) && isRealConst(var)) {
         ExprVector tmp;
-        outs() << *it << "\n";
         int skipped = 0;
         for (int i = 0; i < (*it)->arity(); ++i)
         {  
@@ -621,7 +619,7 @@ namespace ufo
 
     if (!lhs.empty())
     {
-      errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
+      outs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
              << *conjoin (lhs, e->getFactory()) << "\n";
       return e;
     }
@@ -2252,6 +2250,33 @@ namespace ufo
     return typeOf(e) == mk<BOOL_TY>(e->getFactory());
   }
 
+  static Expr divSimplifier(Expr fla)
+  {
+    Expr tmp = fla;
+    ExprFactory& efac = fla->getFactory();
+    ExprVector dividers;
+
+    while (true)
+    {
+      if (isOpX<DIV>(tmp))
+      {
+        dividers.push_back(tmp->right());
+        tmp = tmp->left(); 
+      }
+      else if (isOpX<UN_MINUS>(tmp) && isOpX<DIV>(tmp->left()))
+      {
+        dividers.push_back(tmp->left()->right());
+        tmp = additiveInverse(tmp->left()->left());
+      }
+      else
+        break;
+    }
+
+    if (dividers.size() == 0)
+      return fla;
+    return mk<DIV>(tmp, mkmult(dividers, efac));
+  }
+
   static Expr realRewriteDivs(Expr fla, Expr var)
   {
     assert (isOp<ComparissonOp>(fla));
@@ -2266,32 +2291,27 @@ namespace ufo
     getAddTerm(fla->left(), plusOpsLeft);
     getAddTerm(fla->right(), plusOpsRight);
 
-    outs() <<"in realRewriteDivs\n";
-    outs() << "LeftPlus: \n";
-    for (auto l : plusOpsLeft)
-      outs() << l << "\n";
-    outs() << "RightPlus: \n";
-    for (auto l : plusOpsRight)
-      outs() << l << "\n"; 
+    for (auto r : plusOpsRight)
+      plusOpsLeft.push_back(additiveInverse(r));
 
     ExprSet divs;
     for (auto it = plusOpsLeft.begin(); it != plusOpsLeft.end(); it++)
     {
       if(!contains(*it, var))
         continue;
-      if(isOpX<DIV>(*it))
+      *it = divSimplifier(*it);
+      if(isOpX<DIV>(*it)) {
         divs.insert((*it)->right());
-      else if (isOpX<UN_MINUS>(*it) && isOpX<DIV>((*it)->left()))
+        if(lexical_cast<string>((*it)->right())[0] == '-')
+          minusOps++;
+      }
+      else if (isOpX<UN_MINUS>(*it) && isOpX<DIV>((*it)->left())) {
         divs.insert((*it)->left()->right());
+        if(lexical_cast<string>((*it)->left()->right())[0] == '-')
+          minusOps++;
+      }
     }
 
-    
-    outs() << "Divs: ";
-    for (auto d : divs) {
-      outs() << d << " ";
-    } 
-    outs() << "\n";
-    
     for(auto ite = plusOpsLeft.begin(); ite != plusOpsLeft.end(); ite++)
     {
       if (!contains(*ite, var)) {
@@ -2327,8 +2347,9 @@ namespace ufo
           *ite = mk<MULT>(*ite, m);
       }
     }
-    return (mk(fla->op(), mkplus(plusOpsLeft, efac), mkplus(plusOpsRight,efac)));
-
+    if (minusOps % 2 == 0)
+      return (mk(fla->op(), mkplus(plusOpsLeft, efac), mkMPZ (0, efac)));
+    return reBuildCmpSym(fla, mkMPZ (0, efac), mkplus(plusOpsLeft, efac));
   }
 
   static void realMultHelper(Expr fla, ExprVector& mults)
