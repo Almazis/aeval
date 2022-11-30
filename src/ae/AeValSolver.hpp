@@ -173,10 +173,6 @@ namespace ufo
       {
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
-        outs() << "Lits: { \n";
-        for (auto a: lits)
-          outs() << a << "\n";
-        outs() << "}\n";
         pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, m, u, debug));
         if(m.eval(exp) != exp)
           modelMap[exp] = mk<EQ>(exp, m.eval(exp));

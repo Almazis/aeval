@@ -324,9 +324,11 @@ Expr ineqPrepare(Expr t, Expr eVar)
       zero));
     if (isRealConst(eVar)) {
       outs() << "Before: " << t << "\n";
+      
       t = realRewriteDivs(t, eVar);
-      t = realSimplifyMult(t);
       outs() << "After: " << t << "\n";
+      t = realSimplifyMult(t);
+
     }
     t = ineqSimplifier(eVar, t);
   }

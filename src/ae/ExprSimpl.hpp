@@ -597,6 +597,7 @@ namespace ufo
       }
       else if (isOpX<MULT>(*it) && isRealConst(var)) {
         ExprVector tmp;
+        outs() << *it << "\n";
         int skipped = 0;
         for (int i = 0; i < (*it)->arity(); ++i)
         {  
@@ -2257,54 +2258,77 @@ namespace ufo
     ExprFactory& efac = var->efac();
     ExprVector plusOpsLeft;
     ExprVector plusOpsRight;
+
+    ExprVector lhss;
+    ExprVector rhss;
     int minusOps = 0;
     
     getAddTerm(fla->left(), plusOpsLeft);
     getAddTerm(fla->right(), plusOpsRight);
 
+    outs() <<"in realRewriteDivs\n";
+    outs() << "LeftPlus: \n";
+    for (auto l : plusOpsLeft)
+      outs() << l << "\n";
+    outs() << "RightPlus: \n";
+    for (auto l : plusOpsRight)
+      outs() << l << "\n"; 
+
     ExprSet divs;
-    for (auto a : plusOpsLeft)
-      if(isOpX<DIV>(a))
-      {
-        divs.insert(a->right());
-        if(lexical_cast<string>(a->right())[0] == '-')
-          minusOps++;
-      }
-    for (auto a : plusOpsRight)
-      if(isOpX<DIV>(a)) 
-      {
-        divs.insert(a->right());
-        if(lexical_cast<string>(a->right())[0] == '-')
-          minusOps++;
-      }      
-   
+    for (auto it = plusOpsLeft.begin(); it != plusOpsLeft.end(); it++)
+    {
+      if(!contains(*it, var))
+        continue;
+      if(isOpX<DIV>(*it))
+        divs.insert((*it)->right());
+      else if (isOpX<UN_MINUS>(*it) && isOpX<DIV>((*it)->left()))
+        divs.insert((*it)->left()->right());
+    }
+
+    
+    outs() << "Divs: ";
+    for (auto d : divs) {
+      outs() << d << " ";
+    } 
+    outs() << "\n";
+    
     for(auto ite = plusOpsLeft.begin(); ite != plusOpsLeft.end(); ite++)
     {
-      if (isOpX<DIV>(*ite))
+      if (!contains(*ite, var)) {
+        Expr m = mkmult(divs, efac);
+        if (m != mkMPZ (1, efac))
+          *ite = mk<MULT>(*ite, m);
+      }
+      else if (isOpX<DIV>(*ite))
       {
         Expr d = (*ite)->right();
         divs.erase(d);
-        *ite = mk<MULT>((*ite)->left(), mkmult(divs, efac));
+        Expr m = mkmult(divs, efac);
+        if (m != mkMPZ (1, efac))
+          *ite = mk<MULT>((*ite)->left(), m);
+        else
+          *ite = (*ite)->left();
         divs.insert(d);
       }
-      else
-        *ite = mk<MULT>(*ite, mkmult(divs, efac));
-    }
-    for(auto ite = plusOpsRight.begin(); ite != plusOpsRight.end(); ite++)
-    {
-      if (isOpX<DIV>(*ite))
+      else if (isOpX<UN_MINUS>(*ite) && isOpX<DIV>((*ite)->left()))
       {
-        Expr d = (*ite)->right();
+        Expr d = (*ite)->left()->right();
         divs.erase(d);
-        *ite = mk<MULT>((*ite)->right(), mkmult(divs, efac));
+        Expr m = mkmult(divs, efac);
+        if (m != mkMPZ (1, efac))
+          *ite = mk<MULT>(mk<UN_MINUS>((*ite)->left()->left()), m);
+        else
+          *ite = mk<UN_MINUS>((*ite)->left()->left());
         divs.insert(d);
       }
-      else
-        *ite = mk<MULT>(*ite, mkmult(divs, efac));
+      else {
+        Expr m = mkmult(divs, efac);
+        if (m != mkMPZ (1, efac))
+          *ite = mk<MULT>(*ite, m);
+      }
     }
-    if (minusOps % 2 == 0)
-      return (mk(fla->op(), mkplus(plusOpsLeft, efac), mkplus(plusOpsRight,efac)));
-    return reBuildCmpSym(fla, mkplus(plusOpsRight, efac), mkplus(plusOpsLeft, efac));
+    return (mk(fla->op(), mkplus(plusOpsLeft, efac), mkplus(plusOpsRight,efac)));
+
   }
 
   static void realMultHelper(Expr fla, ExprVector& mults)
