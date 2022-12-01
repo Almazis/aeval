@@ -542,7 +542,7 @@ namespace ufo
     Expr r = e->right();
     ExprVector orig_lhs, orig_rhs, lhs, rhs;
     ExprVector realCoefs;
-
+    outs() << "In rewrite helper M : e = " << e <<"\n";
     // parse
 
     getAddTerm(l, orig_lhs);
@@ -557,6 +557,12 @@ namespace ufo
       if (contains (a, var)) lhs.push_back(additiveInverse(a));
       else rhs.push_back(a);
     }
+
+    outs() << "lhs: ";
+    for (auto l : lhs) {
+      outs() << l << " ";
+    }
+    outs() << "\n";
 
     // combine results
     rational<cpp_int> coef(0, 1);
@@ -578,8 +584,10 @@ namespace ufo
           {  
             if (subExpr->arg(i) != var)
               tmp.push_back(subExpr->arg(i));
-            else
+            else {
               skipped++;
+              // outs() << i << " : " << subExpr->arg(i) << "\n";
+            }
           }
           assert(skipped == 1);
           realCoefs.push_back(mk<UN_MINUS>(mkmult(tmp, var->efac())));
@@ -601,8 +609,10 @@ namespace ufo
         {  
           if ((*it)->arg(i) != var)
             tmp.push_back((*it)->arg(i));
-          else
+          else {
             skipped++;
+            // outs() << i << " : " << (*it)->arg(i) << "\n";
+          }
         }
         assert(skipped == 1);
         realCoefs.push_back(mkmult(tmp, var->efac()));
@@ -1894,6 +1904,7 @@ namespace ufo
   }
 
   static Expr rewriteMultAdd (Expr exp);
+  static Expr rewriteDivAdd (Expr exp);
 
   inline static void getAddTerm (Expr a, ExprVector &terms) // implementation (mutually recursive)
   {
@@ -1941,6 +1952,12 @@ namespace ufo
       if (tmp == a) terms.push_back(a);
       else getAddTerm(tmp, terms);
     }
+    else if (isOpX<DIV>(a))
+    {
+      Expr tmp = rewriteDivAdd(a);
+      if (tmp == a) terms.push_back(a);
+      else getAddTerm(tmp, terms);
+    }
     else if (lexical_cast<string>(a) != "0")
     {
       bool found = false;
@@ -1980,7 +1997,7 @@ namespace ufo
         {
           for (auto &b : allrhs)
           {
-            unf.push_back(mk<MULT>(a, b));
+              unf.push_back(mk<MULT>(a, b));
           }
         }
         return mkplus(unf, exp->getFactory());
@@ -1993,6 +2010,38 @@ namespace ufo
   inline static Expr rewriteMultAdd (Expr exp)
   {
     RW<AddMultDistr> mu(new AddMultDistr());
+    return dagVisit (mu, exp);
+  }
+
+  struct AddDivDistr
+  {
+    AddDivDistr () {};
+
+    Expr operator() (Expr exp)
+    {
+      if (isOpX<DIV>(exp) && exp->arity() == 2)
+      {
+        Expr lhs = exp->left();
+        Expr rhs = exp->right();
+
+        ExprVector alllhs;
+        getAddTerm(lhs, alllhs);
+
+        ExprVector unf;
+        for (auto &a : alllhs)
+        {
+          unf.push_back(mk<DIV>(a, rhs));
+        }
+        return mkplus(unf, exp->getFactory());
+      }
+
+      return exp;
+    }
+  };
+
+  inline static Expr rewriteDivAdd (Expr exp)
+  {
+    RW<AddDivDistr> mu(new AddDivDistr());
     return dagVisit (mu, exp);
   }
 
@@ -2250,7 +2299,7 @@ namespace ufo
     return typeOf(e) == mk<BOOL_TY>(e->getFactory());
   }
 
-  static Expr divSimplifier(Expr fla)
+  static Expr divSimplifier(Expr fla, int& minusOps)
   {
     Expr tmp = fla;
     ExprFactory& efac = fla->getFactory();
@@ -2261,13 +2310,24 @@ namespace ufo
       if (isOpX<DIV>(tmp))
       {
         dividers.push_back(tmp->right());
+        if(lexical_cast<string>(tmp->right())[0] == '-')
+          minusOps++; // TODO: complicated divs
         tmp = tmp->left(); 
       }
       else if (isOpX<UN_MINUS>(tmp) && isOpX<DIV>(tmp->left()))
       {
         dividers.push_back(tmp->left()->right());
+        if(lexical_cast<string>(tmp->left()->right())[0] == '-')
+          minusOps++; // TODO: complicated divs
         tmp = additiveInverse(tmp->left()->left());
       }
+      // else if (isOpX<MULT>(tmp) && isOpX<DIV>(tmp->left()))
+      // {
+      //   dividers.push_back(tmp->left()->right());
+      //   if(lexical_cast<string>(tmp->left()->right())[0] == '-')
+      //     minusOps++; // TODO: complicated divs
+      //   tmp = mk<MULT>(tmp->right(), tmp->left()->left());
+      // }
       else
         break;
     }
@@ -2299,17 +2359,11 @@ namespace ufo
     {
       if(!contains(*it, var))
         continue;
-      *it = divSimplifier(*it);
-      if(isOpX<DIV>(*it)) {
+      *it = divSimplifier(*it, minusOps);
+      if(isOpX<DIV>(*it))
         divs.insert((*it)->right());
-        if(lexical_cast<string>((*it)->right())[0] == '-')
-          minusOps++;
-      }
-      else if (isOpX<UN_MINUS>(*it) && isOpX<DIV>((*it)->left())) {
+      else if (isOpX<UN_MINUS>(*it) && isOpX<DIV>((*it)->left()))
         divs.insert((*it)->left()->right());
-        if(lexical_cast<string>((*it)->left()->right())[0] == '-')
-          minusOps++;
-      }
     }
 
     for(auto ite = plusOpsLeft.begin(); ite != plusOpsLeft.end(); ite++)
