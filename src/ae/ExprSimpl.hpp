@@ -542,7 +542,6 @@ namespace ufo
     Expr r = e->right();
     ExprVector orig_lhs, orig_rhs, lhs, rhs;
     ExprVector realCoefs;
-    outs() << "In rewrite helper M : e = " << e <<"\n";
     // parse
 
     getAddTerm(l, orig_lhs);
@@ -557,13 +556,7 @@ namespace ufo
       if (contains (a, var)) lhs.push_back(additiveInverse(a));
       else rhs.push_back(a);
     }
-
-    outs() << "lhs: ";
-    for (auto l : lhs) {
-      outs() << l << " ";
-    }
-    outs() << "\n";
-
+  
     // combine results
     rational<cpp_int> coef(0, 1);
     for (auto it = lhs.begin(); it != lhs.end(); )
@@ -639,7 +632,6 @@ namespace ufo
     {
       l = mkplus(realCoefs, var->efac());
       l = mk<MULT>(l, var);
-      outs() << "transformed e: " << e << "to :" << mk<T>(l,r);
       return mk<T>(l,r);
     }
     if (coef == 0){
@@ -1908,6 +1900,7 @@ namespace ufo
 
   inline static void getAddTerm (Expr a, ExprVector &terms) // implementation (mutually recursive)
   {
+    // outs() << "getAddTerm for " << a << "\n";
     if (isOpX<PLUS>(a))
     {
       for (auto it = a->args_begin (), end = a->args_end (); it != end; ++it)
@@ -1948,6 +1941,32 @@ namespace ufo
     }
     else if (isOpX<MULT>(a))
     {
+      if (a->arity() == 2) {
+        Expr lhs = a->left();
+        Expr rhs = a->right();
+        if (isOpX<DIV>(lhs)) {
+          Expr tmp = mk<DIV>(mk<MULT>(rhs, lhs->left() ), lhs->right());
+          getAddTerm(tmp, terms);
+          return;
+        }
+        else if (isOpX<DIV>(rhs)) {
+          Expr tmp = mk<DIV>(mk<MULT>(lhs, rhs->left()), rhs->right());
+          getAddTerm(tmp, terms);
+          return;
+        }
+        else if (isOpX<UN_MINUS>(lhs) && isOpX<DIV>(lhs->left())) {
+          rhs = additiveInverse(rhs);
+          Expr tmp = mk<DIV>(mk<MULT>(rhs, lhs->left()->left() ), lhs->left()->right());
+          getAddTerm(tmp, terms);
+          return;
+        } 
+        else if (isOpX<UN_MINUS>(rhs) && isOpX<DIV>(rhs->left())) {
+          lhs = additiveInverse(lhs);
+          Expr tmp = mk<DIV>(mk<MULT>(rhs->left()->left(), lhs), rhs->left()->right());
+          getAddTerm(tmp, terms);
+          return;
+        }
+      }
       Expr tmp = rewriteMultAdd(a);
       if (tmp == a) terms.push_back(a);
       else getAddTerm(tmp, terms);
@@ -2422,11 +2441,13 @@ namespace ufo
     ExprFactory& efac = fla->getFactory();
     ExprVector plusOpsLeft;
     ExprVector plusOpsRight;
+    int minusOps = 0;
     getAddTerm(fla->left(), plusOpsLeft);
     getAddTerm(fla->right(), plusOpsRight);
 
     for(auto ite = plusOpsRight.begin(); ite != plusOpsRight.end(); ite++)
     {
+      *ite = divSimplifier(*ite, minusOps);
       if (!isOpX<MULT>(*ite))
         continue;
       ExprVector mults;
@@ -2435,6 +2456,7 @@ namespace ufo
     }
     for(auto ite = plusOpsLeft.begin(); ite != plusOpsLeft.end(); ite++)
     {
+      *ite = divSimplifier(*ite, minusOps);
       if (!isOpX<MULT>(*ite))
         continue;
       ExprVector mults;

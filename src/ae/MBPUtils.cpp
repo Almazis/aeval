@@ -42,19 +42,19 @@ void laMergeBounds(
     return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
   });
 
-  outs() << "upVec: ";
-  for (auto a: upVec)
-  {
-    outs() << a << " : " << m.eval(a->right()) << ";";
-  }
-  outs() << endl;
+  // outs() << "upVec: ";
+  // for (auto a: upVec)
+  // {
+  //   outs() << a << " : " << m.eval(a->right()) << ";";
+  // }
+  // outs() << endl;
 
-  outs() << "loVec: ";
-  for (auto a: loVec)
-  {
-    outs() << a << " : " << m.eval(a->right()) << ";";
-  }
-  outs() << endl;
+  // outs() << "loVec: ";
+  // for (auto a: loVec)
+  // {
+  //   outs() << a << " : " << m.eval(a->right()) << ";";
+  // }
+  // outs() << endl;
 
   Expr loBound = loVec.back();
   Expr upBound = upVec.front();
@@ -323,12 +323,8 @@ Expr ineqPrepare(Expr t, Expr eVar)
       mk<PLUS>(t->arg(0), additiveInverse(t->arg(1))),
       zero));
     if (isRealConst(eVar)) {
-      outs() << "Before: " << t << "\n";
-      t = realSimplifyMult(t);
       t = realRewriteDivs(t, eVar);
-      outs() << "After rewriteDivs: " << t << "\n";
       t = realSimplifyMult(t);
-      outs() << "After: " << t << "\n";
     }
     t = ineqSimplifier(eVar, t);
   }
@@ -380,9 +376,16 @@ Expr ufo::mixQE(
     sameTypeSet.insert(t);
   }
 
-  if(!sameTypeSet.empty())
-    outSet.insert(isReal(eVar) ? realQE(sameTypeSet, eVar, m)
-                               : intQE(sameTypeSet, eVar, m));
+  if(!sameTypeSet.empty()) {
+    Expr o = isReal(eVar) ? realQE(sameTypeSet, eVar, m) : intQE(sameTypeSet, eVar, m);
+    // outs() << "o is : " << o << std::endl;
+    outSet.insert(o);
+  }
+  
+  // outs() << "OutSet:\n";
+  // for (auto o : outSet)
+  //   outs() << o << "\n";
+  // outs() << std::endl;
 
   return conjoin(outSet, eVar->getFactory());
 }
