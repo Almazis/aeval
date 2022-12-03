@@ -166,17 +166,19 @@ namespace ufo
      */
     void getMBPandSkolem(ZSolver<EZ3>::Model &m)
     {
-      Expr pr = t;
+      Expr pr = tryToRemoveMixType(t);
       ExprMap substsMap;
       ExprMap modelMap;
       for(auto &exp : v)
       {
+        outs() << "\nmodel " << partitioning_size << ":\n";
+        outs() << "project var " << exp << std::endl;
         ExprSet lits;      
         u.getTrueLiterals(pr, m, lits, true);
-        // outs() << "Lits: { \n";
-        // for (auto a: lits)
-        //   outs() << a << "\n";
-        // outs() << "}\n\n";          
+        outs() << "Lits: { \n";
+        for (auto a: lits)
+          outs() << a << "\n";
+        outs() << "}\n" << std::endl;          
         pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, m, u, debug));
         if(m.eval(exp) != exp)
           modelMap[exp] = mk<EQ>(exp, m.eval(exp));

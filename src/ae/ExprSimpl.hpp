@@ -2622,7 +2622,7 @@ namespace ufo
         Expr e = exp->arg(i);
         if (isOpX<MPZ>(e))
           e = mkTerm (mpq_class (lexical_cast<string>(e)), exp->getFactory());
-        else if (bind::isIntConst(e)) 
+        else if (bind::isIntConst(e))
           e = realConst(fname(e));
         args.push_back(e);
       }
@@ -4847,68 +4847,146 @@ namespace ufo
     return convertIntsToReals(exp);
   }
 
-  static void getLiterals (Expr exp, ExprSet& lits, bool splitEqs = true);
+  // static void getLiterals (Expr exp, ExprSet& lits, bool splitEqs = true);
 
-  static void getLiteralsBool(Expr exp, ExprSet& lits, bool splitEqs = true)
-  {
-    Expr el = exp->left();
-    Expr er = exp->right();
-    if (isOp<ComparissonOp>(exp) && !splitEqs && isBoolConstOrNegation(el) && isBoolConstOrNegation(er)) {
-        lits.insert(exp);
-    } else if (isOpX<EQ>(exp) || isOpX<NEQ>(exp) || isOpX<XOR>(exp) || isOpX<IFF>(exp)) {
-      getLiterals(mkNeg(el), lits, splitEqs);
-      getLiterals(er, lits, splitEqs);
-      getLiterals(mkNeg(er), lits, splitEqs);
-      getLiterals(el, lits, splitEqs);
-    } else if (isOpX<AND>(exp) || isOpX<OR>(exp)) {
-      for (int i = 0; i < exp->arity(); i++)
-        getLiterals(exp->arg(i), lits, splitEqs);
-    } else if (isOpX<NEG>(exp)) {
-      if (isBoolConst(el))
-        lits.insert(exp);
-      else
-        getLiterals(mkNeg(el), lits, splitEqs);
-    } else if (isOpX<IMPL>(exp)) {
-      getLiterals(mkNeg(el), lits, splitEqs);
-      getLiterals(er, lits, splitEqs);
-    }
-  }
+  // static void getLiteralsBool(Expr exp, ExprSet& lits, bool splitEqs = true)
+  // {
+  //   Expr el = exp->left();
+  //   Expr er = exp->right();
+  //   if (isOp<ComparissonOp>(exp) && !splitEqs && isBoolConstOrNegation(el) && isBoolConstOrNegation(er)) {
+  //       lits.insert(exp);
+  //   } else if (isOpX<EQ>(exp) || isOpX<NEQ>(exp) || isOpX<XOR>(exp) || isOpX<IFF>(exp)) {
+  //     getLiterals(mkNeg(el), lits, splitEqs);
+  //     getLiterals(er, lits, splitEqs);
+  //     getLiterals(mkNeg(er), lits, splitEqs);
+  //     getLiterals(el, lits, splitEqs);
+  //   } else if (isOpX<AND>(exp) || isOpX<OR>(exp)) {
+  //     for (int i = 0; i < exp->arity(); i++)
+  //       getLiterals(exp->arg(i), lits, splitEqs);
+  //   } else if (isOpX<NEG>(exp)) {
+  //     if (isBoolConst(el))
+  //       lits.insert(exp);
+  //     else
+  //       getLiterals(mkNeg(el), lits, splitEqs);
+  //   } else if (isOpX<IMPL>(exp)) {
+  //     getLiterals(mkNeg(el), lits, splitEqs);
+  //     getLiterals(er, lits, splitEqs);
+  //   }
+  // }
 
-  static void getLiteralsNumeric(Expr exp, ExprSet& lits, bool splitEqs = true)
-  {
-    exp = tryToRemoveMixType(exp);
-    Expr el = exp->left();
-    Expr er = exp->right();
-    if (isOp<ComparissonOp>(exp) && !splitEqs) {
-        lits.insert(exp);
-    } else if (isOpX<EQ>(exp) && !containsOp<MOD>(exp)) {
-      getLiterals(mk<GEQ>(el, er), lits, splitEqs);
-      getLiterals(mk<LEQ>(el, er), lits, splitEqs);
-    } else if (isOpX<NEQ>(exp) && !containsOp<MOD>(exp)) {
-      getLiterals(mk<GT>(el, er), lits, splitEqs);
-      getLiterals(mk<LT>(el, er), lits, splitEqs);
-    } else if (isOp<ComparissonOp>(exp)) {
-      exp = rewriteDivConstraints(exp);
-      exp = rewriteModConstraints(exp);
-      if (isOpX<AND>(exp) || isOpX<OR>(exp))
-        getLiterals(exp, lits, splitEqs);
-      else lits.insert(exp);
-    }
-  }
+  // static void getLiteralsNumeric(Expr exp, ExprSet& lits, bool splitEqs = true)
+  // {
+  //   exp = tryToRemoveMixType(exp);
+  //   Expr el = exp->left();
+  //   Expr er = exp->right();
+  //   if (isOp<ComparissonOp>(exp) && !splitEqs) {
+  //       lits.insert(exp);
+  //   } else if (isOpX<EQ>(exp) && !containsOp<MOD>(exp)) {
+  //     getLiterals(mk<GEQ>(el, er), lits, splitEqs);
+  //     getLiterals(mk<LEQ>(el, er), lits, splitEqs);
+  //   } else if (isOpX<NEQ>(exp) && !containsOp<MOD>(exp)) {
+  //     getLiterals(mk<GT>(el, er), lits, splitEqs);
+  //     getLiterals(mk<LT>(el, er), lits, splitEqs);
+  //   } else if (isOp<ComparissonOp>(exp)) {
+  //     exp = rewriteDivConstraints(exp);
+  //     exp = rewriteModConstraints(exp);
+  //     if (isOpX<AND>(exp) || isOpX<OR>(exp))
+  //       getLiterals(exp, lits, splitEqs);
+  //     else lits.insert(exp);
+  //   }
+  // }
 
-  static void getLiterals (Expr exp, ExprSet& lits, bool splitEqs)
+  // static void getLiterals (Expr exp, ExprSet& lits, bool splitEqs)
+  // {
+  //   ExprFactory& efac = exp->getFactory();
+  //   Expr el = exp->left();
+  //   Expr er = exp->right();
+  //   if (isOp<BoolOp>(exp) || isOp<ComparissonOp>(exp) && isBoolean(el))
+  //     getLiteralsBool(exp, lits, splitEqs);
+  //   else if (isOp<ComparissonOp>(exp) && isNumeric(el))
+  //     getLiteralsNumeric(exp, lits, splitEqs);
+  //   else if (bind::typeOf(exp) == mk<BOOL_TY>(efac) &&
+  //       !containsOp<AND>(exp) && !containsOp<OR>(exp)) {
+  //     lits.insert(exp);
+  //   } else if (!isOpX<TRUE>(exp) && !isOpX<FALSE>(exp)) {
+  //     errs () << "unable lit: " << *exp << "\n";
+  //     assert(0);
+  //   }
+  // }
+
+  static void getLiterals (Expr exp, ExprSet& lits, bool splitEqs = true)
   {
     ExprFactory& efac = exp->getFactory();
     Expr el = exp->left();
     Expr er = exp->right();
-    if (isOp<BoolOp>(exp) || isOp<ComparissonOp>(exp) && isBoolean(el))
-      getLiteralsBool(exp, lits, splitEqs);
-    else if (isOp<ComparissonOp>(exp) && isNumeric(el))
-      getLiteralsNumeric(exp, lits, splitEqs);
+    if (isOp<ComparissonOp>(exp) && !splitEqs)
+    {
+      if (isNumeric(el) || (isBoolConstOrNegation(el) && isBoolConstOrNegation(er)))
+        lits.insert(exp);
+    }
+    if (isOpX<EQ>(exp) && isBoolean(er))
+    {
+      getLiterals(mkNeg(el), lits, splitEqs);
+      getLiterals(er, lits, splitEqs);
+      getLiterals(mkNeg(er), lits, splitEqs);
+      getLiterals(el, lits, splitEqs);
+    }
+    if (isOpX<EQ>(exp) && isNumeric(el) && !containsOp<MOD>(exp))
+    {
+      getLiterals(mk<GEQ>(el, er), lits, splitEqs);
+      getLiterals(mk<LEQ>(el, er), lits, splitEqs);
+    }
+    else if (isOpX<NEQ>(exp) && isNumeric(el) && !containsOp<MOD>(exp))
+    {
+      getLiterals(mk<GT>(el, er), lits, splitEqs);
+      getLiterals(mk<LT>(el, er), lits, splitEqs);
+    }
+    else if ((isOpX<EQ>(exp) || isOpX<NEQ>(exp) || isOpX<XOR>(exp)) && isBoolean(el))
+    {
+      getLiterals(el, lits, splitEqs);
+      getLiterals(er, lits, splitEqs);
+      getLiterals(mkNeg(el), lits, splitEqs);
+      getLiterals(mkNeg(er), lits, splitEqs);
+    }
+    else if (isOpX<NEG>(exp))
+    {
+      if (isBoolConst(el))
+        lits.insert(exp);
+      else
+        getLiterals(mkNeg(el), lits, splitEqs);
+    }
+    else if (isOpX<IMPL>(exp))
+    {
+      getLiterals(mkNeg(el), lits, splitEqs);
+      getLiterals(er, lits, splitEqs);
+    }
+    else if (isOpX<IFF>(exp))
+    {
+      getLiterals(mkNeg(el), lits, splitEqs);
+      getLiterals(er, lits, splitEqs);
+      getLiterals(mkNeg(er), lits, splitEqs);
+      getLiterals(el, lits, splitEqs);
+    }
     else if (bind::typeOf(exp) == mk<BOOL_TY>(efac) &&
-        !containsOp<AND>(exp) && !containsOp<OR>(exp)) {
-      lits.insert(exp);
-    } else if (!isOpX<TRUE>(exp) && !isOpX<FALSE>(exp)) {
+        !containsOp<AND>(exp) && !containsOp<OR>(exp))
+    {
+      if (isOp<ComparissonOp>(exp))
+      {
+        exp = rewriteDivConstraints(exp);
+        exp = rewriteModConstraints(exp);
+        if (isOpX<AND>(exp) || isOpX<OR>(exp))
+          getLiterals(exp, lits, splitEqs);
+        else lits.insert(exp);
+      }
+      else lits.insert(exp);
+    }
+    else if (isOpX<AND>(exp) || isOpX<OR>(exp))
+    {
+      for (int i = 0; i < exp->arity(); i++)
+        getLiterals(exp->arg(i), lits, splitEqs);
+    }
+    else if (!isOpX<TRUE>(exp) && !isOpX<FALSE>(exp))
+    {
       errs () << "unable lit: " << *exp << "\n";
       assert(0);
     }
