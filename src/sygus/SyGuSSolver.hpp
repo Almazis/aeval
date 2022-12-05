@@ -218,7 +218,7 @@ class SyGuSSolver
     faArgs.push_back(mknary<EXISTS>(exArgs));
     Expr aeProb = mknary<FORALL>(faArgs);
     aeProb = regularizeQF(aeProb);
-    aeProb = tryToRemoveMixType(aeProb);
+    aeProb = convertIdivToDiv<DIV>(aeProb);
     if (debug > 1)
       { outs() << "Sending to aeval: "; u.print(aeProb); outs() << endl; }
 

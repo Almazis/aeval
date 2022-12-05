@@ -1277,6 +1277,9 @@ namespace ufo
       minusSets(ex_qvars, fa_qvars);
     }
 
+    s = convertIdivToDiv<DIV>(s);
+    t = convertIdivToDiv<DIV>(t);
+
     if(debug >= 3)
     {
       outs() << "s part: " << s << "\n";

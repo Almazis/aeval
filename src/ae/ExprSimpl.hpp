@@ -2598,9 +2598,9 @@ namespace ufo
 
   static Expr convertIntsToReals (Expr exp);
 
-  struct IntToReal
+  struct AllIntsToReals
   {
-    IntToReal () {};
+    AllIntsToReals () {};
 
     Expr operator() (Expr exp)
     {
@@ -2620,7 +2620,42 @@ namespace ufo
 
   static Expr convertIntsToReals (Expr exp)
   {
-    RW<IntToReal> rw(new IntToReal());
+    RW<AllIntsToReals> rw(new AllIntsToReals());
+    return dagVisit (rw, exp);
+  }
+
+  template <typename T> static Expr convertIdivToDiv (Expr exp);
+  template <typename T> struct IdivToDiv
+  {
+    IdivToDiv<T> () {};
+
+    Expr operator() (Expr exp)
+    {
+      if (isOpX<T>(exp))
+      {
+        ExprVector args;
+        for (int i = 0; i < exp->arity(); i++)
+        {
+          Expr e = exp->arg(i);
+          if (isOpX<MPZ>(e))
+            e = mkTerm (mpq_class (lexical_cast<string>(e)), exp->getFactory());
+          else {
+            e = convertIdivToDiv<PLUS>(e);
+            e = convertIdivToDiv<MINUS>(e);
+            e = convertIdivToDiv<MULT>(e);
+            e = convertIdivToDiv<UN_MINUS>(e);
+          }
+          args.push_back(e);
+        }
+        return mknary<T>(args);
+      }
+      return exp;
+    }
+  };
+
+  template <typename T> static Expr convertIdivToDiv (Expr exp)
+  {
+    RW<IdivToDiv<T>> rw(new IdivToDiv<T>());
     return dagVisit (rw, exp);
   }
 
