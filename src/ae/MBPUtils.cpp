@@ -42,19 +42,19 @@ void laMergeBounds(
     return isOpX<TRUE>(m.eval(mk<LT>(ra, rb)));
   });
 
-  // outs() << "upVec: ";
-  // for (auto a: upVec)
-  // {
-  //   outs() << a << " : " << m.eval(a->right()) << ";";
-  // }
-  // outs() << endl;
+  outs() << "upVec: ";
+  for (auto a: upVec)
+  {
+    outs() << a << " : " << m.eval(a->right()) << ";";
+  }
+  outs() << endl;
 
-  // outs() << "loVec: ";
-  // for (auto a: loVec)
-  // {
-  //   outs() << a << " : " << m.eval(a->right()) << ";";
-  // }
-  // outs() << endl;
+  outs() << "loVec: ";
+  for (auto a: loVec)
+  {
+    outs() << a << " : " << m.eval(a->right()) << ";";
+  }
+  outs() << endl;
 
   Expr loBound = loVec.back();
   Expr upBound = upVec.front();
@@ -382,10 +382,10 @@ Expr ufo::mixQE(
     outSet.insert(o);
   }
   
-  // outs() << "OutSet:\n";
-  // for (auto o : outSet)
-  //   outs() << o << "\n";
-  // outs() << std::endl;
+  outs() << "OutSet:\n";
+  for (auto o : outSet)
+    outs() << o << "\n";
+  outs() << std::endl;
 
   return conjoin(outSet, eVar->getFactory());
 }
