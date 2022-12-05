@@ -171,7 +171,7 @@ namespace ufo
       ExprMap modelMap;
       for(auto &exp : v)
       {
-        ExprSet lits;      
+        ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
         outs() << "Lits with var : { \n";
         for (auto a: lits)

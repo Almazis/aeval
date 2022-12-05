@@ -80,7 +80,6 @@ void laMergeBounds(
  */
 Expr lraMultTrans(Expr t, Expr eVar)
 {
-  // outs() << "exp: " << t << "eVar: " << eVar << "\n";
   Expr lhs = t->left(), rhs = t->right();
   unsigned minOps = 0;
   while(isOp<MULT>(lhs)) //until lhs is no longer *
@@ -336,9 +335,7 @@ Expr ineqPrepare(Expr t, Expr eVar)
   else if(isInt(eVar) && (intVSreal == INTTYPE))
     return t;
   else if(intVSreal != NOTYPE)
-  {
     notImplemented();
-  }
   return t;
 }
 
@@ -376,12 +373,10 @@ Expr ufo::mixQE(
     sameTypeSet.insert(t);
   }
 
-  if(!sameTypeSet.empty()) {
-    Expr o = isReal(eVar) ? realQE(sameTypeSet, eVar, m) : intQE(sameTypeSet, eVar, m);
-    // outs() << "o is : " << o << std::endl;
-    outSet.insert(o);
-  }
-  
+  if(!sameTypeSet.empty())
+    outSet.insert(isReal(eVar) ? realQE(sameTypeSet, eVar, m)
+                               : intQE(sameTypeSet, eVar, m));
+
   outs() << "OutSet:\n";
   for (auto o : outSet)
     outs() << o << "\n";

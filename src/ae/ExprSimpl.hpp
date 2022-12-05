@@ -556,7 +556,7 @@ namespace ufo
       if (contains (a, var)) lhs.push_back(additiveInverse(a));
       else rhs.push_back(a);
     }
-  
+
     // combine results
     rational<cpp_int> coef(0, 1);
     for (auto it = lhs.begin(); it != lhs.end(); )
@@ -570,17 +570,15 @@ namespace ufo
           coef -= lexical_cast<cpp_int>(subExpr->left());
           found = true;
         }
-        else if (isOpX<MULT>(subExpr) && 2 == subExpr->arity() && isOpX<MPQ>(subExpr->left()) && subExpr->right() == var) {
+        else if (isOpX<MULT>(subExpr) && isRealConst(var)) {
           ExprVector tmp;
           int skipped = 0;
           for (int i = 0; i < (*it)->arity(); ++i)
-          {  
+          {
             if (subExpr->arg(i) != var)
               tmp.push_back(subExpr->arg(i));
-            else {
+            else
               skipped++;
-              // outs() << i << " : " << subExpr->arg(i) << "\n";
-            }
           }
           assert(skipped == 1);
           realCoefs.push_back(mk<UN_MINUS>(mkmult(tmp, var->efac())));
@@ -602,10 +600,8 @@ namespace ufo
         {  
           if ((*it)->arg(i) != var)
             tmp.push_back((*it)->arg(i));
-          else {
+          else
             skipped++;
-            // outs() << i << " : " << (*it)->arg(i) << "\n";
-          }
         }
         assert(skipped == 1);
         realCoefs.push_back(mkmult(tmp, var->efac()));
@@ -622,7 +618,7 @@ namespace ufo
 
     if (!lhs.empty())
     {
-      outs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
+      errs() << "WARNING: COULD NOT NORMALIZE w.r.t. " << *var << ": "
              << *conjoin (lhs, e->getFactory()) << "\n";
       return e;
     }
@@ -1900,7 +1896,6 @@ namespace ufo
 
   inline static void getAddTerm (Expr a, ExprVector &terms) // implementation (mutually recursive)
   {
-    // outs() << "getAddTerm for " << a << "\n";
     if (isOpX<PLUS>(a))
     {
       for (auto it = a->args_begin (), end = a->args_end (); it != end; ++it)
@@ -2016,7 +2011,7 @@ namespace ufo
         {
           for (auto &b : allrhs)
           {
-              unf.push_back(mk<MULT>(a, b));
+            unf.push_back(mk<MULT>(a, b));
           }
         }
         return mkplus(unf, exp->getFactory());
@@ -2340,13 +2335,6 @@ namespace ufo
           minusOps++; // TODO: complicated divs
         tmp = additiveInverse(tmp->left()->left());
       }
-      // else if (isOpX<MULT>(tmp) && isOpX<DIV>(tmp->left()))
-      // {
-      //   dividers.push_back(tmp->left()->right());
-      //   if(lexical_cast<string>(tmp->left()->right())[0] == '-')
-      //     minusOps++; // TODO: complicated divs
-      //   tmp = mk<MULT>(tmp->right(), tmp->left()->left());
-      // }
       else
         break;
     }
@@ -5044,6 +5032,5 @@ namespace ufo
     }
     if (upper) outs() << "\n";
   }
-
 }
 #endif
