@@ -2350,6 +2350,11 @@ namespace expr
         return mkTerm (mpz_class (a), efac);
       }
 
+      static Expr mkMPQ(std::string a, ExprFactory& efac)
+      {
+        return mkTerm (mpq_class (a), efac);
+      }
+
       struct FAPP_PS
       {
 	static inline void print (std::ostream &OS,

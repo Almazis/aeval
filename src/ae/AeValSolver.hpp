@@ -173,12 +173,14 @@ namespace ufo
       {
         ExprSet lits;
         u.getTrueLiterals(pr, m, lits, true);
-        pr = simplifyArithm(mixQE(conjoin(lits, efac), exp, m, u, debug));
+        outs() << "Lits with var : { \n";
+        for (auto a: lits)
+          if (contains(a, exp))
+            outs() << a << "\n";
+        outs() << "}\n" << std::endl;          
+        pr = mixQE(conjoin(lits, efac), exp, m, u, debug);
         if(m.eval(exp) != exp)
           modelMap[exp] = mk<EQ>(exp, m.eval(exp));
-
-        if(debug)
-          MBPSanityCheck(m, pr);
 
         if(debug >= 2)
         {
@@ -198,7 +200,11 @@ namespace ufo
           }
           outs() << "projection:\n";
           pprint(pr, 2);
+          outs() << std::endl;
         }
+
+        if(debug)
+          MBPSanityCheck(m, pr);
 
         for(auto it = lits.begin(); it != lits.end();)
         {
@@ -223,10 +229,14 @@ namespace ufo
     {
       assert(isOpX<TRUE>(m.eval(pr)));
       ExprVector args;
-      for(auto temp : v)
+      ExprVector argsPr;
+      for(auto temp : v) {
         args.push_back(temp->last());
+        argsPr.push_back(temp->last());
+      }
       args.push_back(t);
-      boost::tribool impl = u.implies(pr, mknary<EXISTS>(args));
+      argsPr.push_back(pr);
+      boost::tribool impl = u.implies(mknary<EXISTS>(argsPr), mknary<EXISTS>(args));
       tribool_assert(impl);
     };
 
@@ -1267,8 +1277,8 @@ namespace ufo
       minusSets(ex_qvars, fa_qvars);
     }
 
-    s = convertIntsToReals<DIV>(s);
-    t = convertIntsToReals<DIV>(t);
+    s = convertIdivToDiv<DIV>(s);
+    t = convertIdivToDiv<DIV>(t);
 
     if(debug >= 3)
     {
